@@ -20,6 +20,4 @@ adapted from, and in places reproduced verbatim from, vvaharness:
 
 vvaharness is an external, multi-call scanning product. secscan
 reimplements its *method* to run inside a single Claude Code session and
-is not affiliated with or endorsed by Visa, Inc. The skill source files
-intentionally carry no upstream references; this NOTICE is the canonical
-record of that lineage.
+is not affiliated with or endorsed by Visa, Inc.
