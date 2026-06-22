@@ -1,0 +1,25 @@
+secscan
+Copyright 2026 Anthony Green
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+------------------------------------------------------------------------
+Upstream attribution
+------------------------------------------------------------------------
+
+This skill is a derivative work. Its analysis methodology — the staged
+SAST pipeline (survey, threat-model, decompose, deep-dive, pre-filter,
+adversarial-verify, dedup, chain, report) and, in particular, the gate
+and specialist-lens prompt text in `gates.md` and `lenses.md` — is
+adapted from, and in places reproduced verbatim from, vvaharness:
+
+    Visa Vulnerability Agentic Harness (vvaharness)
+    Copyright 2026 Visa, Inc.
+    Licensed under the Apache License, Version 2.0
+    http://www.apache.org/licenses/LICENSE-2.0
+
+vvaharness is an external, multi-call scanning product. secscan
+reimplements its *method* to run inside a single Claude Code session and
+is not affiliated with or endorsed by Visa, Inc. The skill source files
+intentionally carry no upstream references; this NOTICE is the canonical
+record of that lineage.
