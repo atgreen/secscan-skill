@@ -62,3 +62,4 @@ defaults to the current repo's diff vs. `main`.
 ## License
 
 Apache License 2.0 — see [`LICENSE`](LICENSE).
+
