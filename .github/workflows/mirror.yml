@@ -1,0 +1,16 @@
+name: Mirror to GitHub
+
+on:
+  push:
+  schedule:
+    - cron: '0 0 * * *' # Runs every day at midnight
+
+jobs:
+  mirror_to_target:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mirror Git Repository
+        uses: pixta-dev/repository-mirroring-action@v1
+        with:
+          target_repo_url: "git@github.com:atgreen/secscan-skill.git"
+          ssh_private_key: ${{ secrets.GIT_SSH_PRIVATE_KEY }}
