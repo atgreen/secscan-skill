@@ -192,7 +192,32 @@ medium findings compose into a high (e.g. IDOR + missing authz → account
 takeover)? Rank by severity.
 
 ### s9 — Report
-Emit a Markdown report, severity-ranked (HIGH → LOW), each finding with: title,
+Before emitting the report, **collect scan metadata** from the target directory:
+- If the directory is a git repository, run (in order): `git remote get-url origin`
+  (repo URL), `git rev-parse HEAD` (commit hash), `git log -1 --format=%cI`
+  (commit timestamp ISO-8601), and `git describe --tags --always` (nearest tag +
+  offset, if any). Capture whatever succeeds; skip gracefully if git is
+  unavailable or the field fails.
+- Record the **scan timestamp** (wall-clock UTC at the time s9 runs) regardless
+  of whether git is available.
+
+Emit a Markdown report that **opens with a metadata block** before the summary
+paragraph, for example:
+
+```
+## Scan metadata
+| Field | Value |
+|---|---|
+| Repo URL | https://github.com/org/repo |
+| Commit | abc1234def5678 |
+| Commit date | 2026-07-02T14:30:00Z |
+| Nearest tag | v1.2.3-4-gabc1234 |
+| Scan date | 2026-07-02T16:15:00Z |
+```
+
+Omit rows whose value could not be determined (or mark them `N/A`).
+
+Then continue severity-ranked (HIGH → LOW), each finding with: title,
 severity + CVSS vector, CWE, source_ref → sink_ref, exploit scenario,
 **reproducer** (the PoC/model from s6b, with what actually ran vs. what the user
 must run elsewhere), recommendation. Lead with a one-paragraph summary (repo
