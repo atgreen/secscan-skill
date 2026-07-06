@@ -136,8 +136,9 @@ never invent one).
 
 Record each finding with: file, line_start/end, vuln_class, cwe, title, impact,
 description (input→bug data flow), exploit_scenario, preconditions,
-recommendation, code_snippet, **source_ref** (file:line where input enters) and
-**sink_ref** (file:line where used unsafely), confidence (0–1).
+recommendation, code_snippet (redact any secret it contains — see s9),
+**source_ref** (file:line where input enters) and **sink_ref** (file:line where
+used unsafely), confidence (0–1).
 
 ### s5 — Pre-filter (deterministic, free)
 Drop any finding that: is below ~0.5 confidence; lacks a real `source_ref` AND
@@ -200,6 +201,19 @@ kind, lenses run, scope covered, counts by severity). State explicitly:
 **triage candidates requiring human review**; note anything left out of scope
 (including out-of-scope-per-policy items from s1). Offer to write SARIF, to land
 reproducers as regression tests, or to widen scope.
+
+**Recommendations are code-level only.** Name the concrete code change
+(parameterized query, output encoding, constant-time compare, input allow-list,
+secret-manager/env read). Operational and process controls — WAF/SIEM/monitoring
+rules, pre-commit hooks, manual review, sign-offs, documentation — are not fixes
+and don't belong in the recommendation (at most a passing mention in prose).
+
+**Never echo plaintext secrets.** A discovered password, API key, token,
+private key, or credential-bearing connection string must not appear verbatim
+anywhere in your output — report, code snippets, reproducers, or chat. Refer to
+it by location (`file:line`); when disambiguation is needed, redact to the
+first 2 + last 2 characters joined by `***` (e.g. `CK***l4`). This holds even
+though the secret already sits in the repo — quoting it amplifies the exposure.
 
 **Output persistence — default to chat, don't write files unprompted.** Emit
 the report (and any SARIF) inline in the conversation by default. Write report or

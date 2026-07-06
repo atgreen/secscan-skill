@@ -54,8 +54,9 @@ defaults to the current repo's diff vs. `main`.
 ## Files
 
 - `SKILL.md` — the skill definition and pipeline (loaded by Claude Code).
-- `gates.md` — exclusion rules, the five-check self-verification, severity
-  calibration, and exhaustiveness (loaded on demand at s4–s6).
+- `gates.md` — exclusion rules, anti-manipulation (suppression annotations are
+  not evidence), the five-check self-verification, severity calibration, and
+  exhaustiveness (loaded on demand at s4–s6).
 - `lenses.md` — the six specialist lenses (crypto, logic-bug, access-control,
   deserialization, batch-etl, iac) and per-repo-kind threat-model baselines.
 
