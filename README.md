@@ -28,8 +28,10 @@ is gated, severity-calibrated, and adversarially verified before it's reported.
 - **Untrusted input.** Repository content — including any embedded "ignore
   previous instructions" or `AGENTS`/`CLAUDE`-style blocks — is treated as DATA
   to analyze, never as instructions. Injection attempts are reported, not obeyed.
-- **Read-only on the target.** secscan analyzes; it never edits the project's
-  source, config, or tests.
+- **Read-only on the target.** A scan analyzes; it never edits the project's
+  source, config, or tests. The one exception is the opt-in remediation flow
+  (`remediate.md`), which edits only when you name findings to fix and
+  adversarially validates each patch.
 - **Honest output.** Zero findings is a valid result. Findings are triage
   candidates requiring human review, never represented as confirmed vulns.
 
@@ -59,6 +61,9 @@ defaults to the current repo's diff vs. `main`.
   exhaustiveness (loaded on demand at s4–s6).
 - `lenses.md` — the six specialist lenses (crypto, logic-bug, access-control,
   deserialization, batch-etl, iac) and per-repo-kind threat-model baselines.
+- `remediate.md` — the **opt-in** fix flow (re-confirm → minimal root-cause
+  patch → adversarial validation), loaded only when you ask to fix named
+  findings. It's the one path that edits the target; a scan never triggers it.
 
 ## License
 

@@ -10,7 +10,9 @@ Upstream attribution
 This skill is a derivative work. Its analysis methodology — the staged
 SAST pipeline (survey, threat-model, decompose, deep-dive, pre-filter,
 adversarial-verify, dedup, chain, report) and, in particular, the gate
-and specialist-lens prompt text in `gates.md` and `lenses.md` — is
+and specialist-lens prompt text in `gates.md` and `lenses.md`, plus the
+remediate-then-adversarially-validate method in `remediate.md` (adapted
+from vvaharness's S10/S11 remediation and validation stages) — is
 adapted from, and in places reproduced verbatim from, vvaharness:
 
     Visa Vulnerability Agentic Harness (vvaharness)

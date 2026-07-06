@@ -45,7 +45,10 @@ secscan analyzes; it does not change the code under review.
 - Anything you *do* create — reproducers (s6b), the report — lives outside the
   source tree (see s9) or in the repo's own test layout **only** when the user
   asks you to land regression tests. Fixes are a separate, explicitly-requested
-  follow-up, never part of the scan itself.
+  follow-up, never part of the scan itself — the **one** path that edits the
+  target is remediation (`remediate.md`), and it runs only when the user names
+  findings to fix. Load `remediate.md` at that point; do not read it during a
+  scan.
 
 ## Token discipline (the whole point of this skill)
 A naive scanner spawns many LLM calls per code chunk with voting runs. You do not.
@@ -227,3 +230,7 @@ only on explicit request — see s6b.)
 ## Quick start
 "Scan <path> for vulnerabilities" → s1 on that path. If no path, ask or default
 to the current repo's diff vs main. Read `lenses.md` and `gates.md` before s4.
+
+If the user then asks to **fix** named findings ("fix #1 and #3", "fix the
+HIGHs"), read `remediate.md` and follow it. Remediation is opt-in and is the
+only part of secscan that edits the target — never start it unprompted.
