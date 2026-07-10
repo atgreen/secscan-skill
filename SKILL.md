@@ -87,8 +87,19 @@ signal high.
   watchers, deserializers) and **sinks** (SQL, exec/system, file paths, crypto,
   templating, response writers). Grep for the patterns, list file:line.
 - Pick the **specialist lenses** that match the code (default set:
-  `crypto, logic-bug, access-control, batch-etl, iac`; add `deserialization`
-  for JVM/pickle/yaml). Full lens prompts are in `lenses.md` — read it now.
+  `crypto, logic-bug, access-control, batch-etl, iac`). Add the ones the code
+  calls for: `deserialization` (JVM/pickle/yaml), `memory-safety`
+  (C/C++/Rust `unsafe`/cgo/JNI/kernel/parsers), `ai-llm` (RAG/agent/tool-calling/
+  MCP/prompt-assembly), `web-protocol` (proxy/CDN/gateway/custom HTTP parser or
+  any session/JWT/OAuth/SAML/reset flow), `client-side` (SPA/extension/webview
+  with DOM rendering, `postMessage`, WebSocket, or credentialed CORS). Full lens
+  prompts are in `lenses.md` — read it now.
+- **Prior runs (opt-in coverage memory).** A single pass never finds everything.
+  If a prior scan persisted results at `security-scan/findings.json` (see s9),
+  read it now: don't re-litigate confirmed findings — carry them forward and
+  weight this pass toward gaps (entry points, lenses, or subsystems the prior run
+  didn't cover). Note what you're skipping and why in the s9 summary. This only
+  READS an existing file; it never writes one without the s9 confirmation step.
 
 ### s2 — Threat model
 For the repo kind, instantiate the baseline checklist from `lenses.md` and a
@@ -218,14 +229,34 @@ it by location (`file:line`); when disambiguation is needed, redact to the
 first 2 + last 2 characters joined by `***` (e.g. `CK***l4`). This holds even
 though the secret already sits in the repo — quoting it amplifies the exposure.
 
+**Structured output (offer alongside the Markdown).** Offer to emit
+`findings.json` conforming to `findings.schema.json` (in this skill's directory —
+Read it before writing). It has two `verdict` branches: `true_positive` (a
+survivor, with `source_ref`/`sink_ref` as `file:line` strings, `cwe`,
+`cvss_vector`, `severity`, `reproducer`, `recommendation`, `confidence` 0–1) and
+`false_positive` (title + `reason`, for anything killed in s5/s6 you want on
+record). `additionalProperties`
+is enforced, so no stray fields. Validate with
+`node <skill-dir>/validate-findings.cjs <path>/findings.json` — a structural
+check only (schema conformance, not correctness; the finding's truth was
+established in s6). This is the machine-readable form of the same triage
+candidates — SARIF is still available on request.
+
 **Output persistence — default to chat, don't write files unprompted.** Emit
-the report (and any SARIF) inline in the conversation by default. Write report or
-PoC files to disk only when the user asks, and then to a clearly named,
-non-source location — e.g. a `security-scan/` directory at the repo root —
-confirming the path first. Never scatter artifacts through the source tree, and
-never overwrite existing files; if `security-scan/` already exists, ask before
-adding to it. (Reproducers landed as regression tests are the one exception, and
-only on explicit request — see s6b.)
+the report (and any SARIF/JSON) inline in the conversation by default. Write
+report, `findings.json`, or PoC files to disk only when the user asks, and then
+to a clearly named, non-source location — e.g. a `security-scan/` directory at
+the repo root — confirming the path first. Never scatter artifacts through the
+source tree, and never overwrite existing files; if `security-scan/` already
+exists, ask before adding to it. (Reproducers landed as regression tests are the
+one exception, and only on explicit request — see s6b.)
+
+**Coverage memory (opt-in).** If the user wants scans to accumulate across runs,
+offer to persist `findings.json` to `security-scan/findings.json`. A later scan's
+s1 reads it to skip confirmed findings and target gaps. When updating an existing
+file, merge — carry prior entries forward, add this run's survivors, and don't
+silently drop a prior finding; the same confirm-the-path rule applies before any
+write.
 
 ## Quick start
 "Scan <path> for vulnerabilities" → s1 on that path. If no path, ask or default

@@ -19,7 +19,7 @@ is gated, severity-calibrated, and adversarially verified before it's reported.
 | **s5 — Pre-filter** | Drop low-confidence / uncited / out-of-scope findings, deterministically and for free. |
 | **s6 — Adversarial verify** | Assume each finding is **wrong** until confirmed in source; walk callers back to an external entry point; assign a CVSS 3.1 vector. |
 | **s7/s8 — Dedup & chain** | Merge duplicates; look for multi-hop exploit chains. |
-| **s9 — Report** | Severity-ranked Markdown (CWE, source→sink, exploit scenario, fix), marked as triage candidates. |
+| **s9 — Report** | Severity-ranked Markdown (CWE, source→sink, exploit scenario, fix), marked as triage candidates. Optional schema-validated `findings.json`. |
 
 ## Design principles
 
@@ -34,6 +34,11 @@ is gated, severity-calibrated, and adversarially verified before it's reported.
   adversarially validates each patch.
 - **Honest output.** Zero findings is a valid result. Findings are triage
   candidates requiring human review, never represented as confirmed vulns.
+- **Structured, checkable output.** s9 can emit a `findings.json` conforming to
+  `findings.schema.json` and validated by a zero-dependency script — a
+  machine-readable form of the same triage candidates, on request.
+- **Coverage accumulates.** A single pass never finds everything. Persisted
+  findings (opt-in) let a later scan skip what's confirmed and target the gaps.
 
 ## Install
 
@@ -59,8 +64,13 @@ defaults to the current repo's diff vs. `main`.
 - `gates.md` — exclusion rules, anti-manipulation (suppression annotations are
   not evidence), the five-check self-verification, severity calibration, and
   exhaustiveness (loaded on demand at s4–s6).
-- `lenses.md` — the six specialist lenses (crypto, logic-bug, access-control,
-  deserialization, batch-etl, iac) and per-repo-kind threat-model baselines.
+- `lenses.md` — the specialist lenses (crypto, logic-bug, access-control,
+  deserialization, batch-etl, iac, memory-safety, ai-llm, web-protocol,
+  client-side) and per-repo-kind threat-model baselines.
+- `findings.schema.json` — JSON schema for the optional `findings.json` (s9),
+  with `true_positive` and `false_positive` verdict branches.
+- `validate-findings.cjs` — zero-dependency Node validator that checks a
+  `findings.json` against the schema. Structural check only.
 - `remediate.md` — the **opt-in** fix flow (re-confirm → minimal root-cause
   patch → adversarial validation), loaded only when you ask to fix named
   findings. It's the one path that edits the target; a scan never triggers it.
