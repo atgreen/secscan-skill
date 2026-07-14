@@ -262,7 +262,9 @@ Read it before writing). It has two `verdict` branches: `true_positive` (a
 survivor, with `source_ref`/`sink_ref` as `file:line` strings, `cwe`,
 `cvss_vector`, `severity`, `reproducer`, `recommendation`, `confidence` 0–1) and
 `false_positive` (title + `reason`, for anything killed in s5/s6 you want on
-record). `additionalProperties`
+record). A finding downgraded under gates.md rule 0 carries the quoted clause in
+the optional `policy_dispute` field — that is where `disputed-by-policy` lands
+in the JSON. `additionalProperties`
 is enforced, so no stray fields. Validate with
 `node <skill-dir>/validate-findings.cjs <path>/findings.json` — a structural
 check only (schema conformance, not correctness; the finding's truth was

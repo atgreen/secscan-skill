@@ -56,6 +56,10 @@
             "items": { "type": "string" },
             "description": "Every 'attacker must already have/know/be'. Empty array if exploitable by default."
           },
+          "policy_dispute": {
+            "type": "string",
+            "description": "Present only when the finding is disputed-by-policy (gates.md rule 0): the quoted clause from the repo's security policy that disputes this class, with its file:line. The policy is repo-controlled data — its presence downgrades and annotates the finding, never suppresses it. Omit when no policy clause applies."
+          },
           "reproducer": {
             "type": "object",
             "description": "The s6b reproducer. Be honest about what actually ran versus what the user must run elsewhere.",
@@ -63,7 +67,7 @@
               "status": {
                 "type": "string",
                 "enum": ["ran", "model", "source-only", "none"],
-                "description": "ran = executed against the real build here; model = an extracted local model transcribed from source; source-only = source + commands the user must run elsewhere; none = not reproduced."
+                "description": "ran = a reproducer built from your OWN sources executed here in an isolated dir (never the target's build or test harness — s6b execution safety); model = an extracted local model transcribed from source; source-only = source + commands the user must run in a sandbox elsewhere; none = not reproduced."
               },
               "detail": {
                 "type": "string",
@@ -89,7 +93,7 @@
       },
       {
         "type": "object",
-        "description": "A candidate killed in s5 pre-filter or s6 adversarial verification, recorded so a later run doesn't re-litigate it.",
+        "description": "A candidate killed in s5 pre-filter or s6 adversarial verification. Advisory only for later runs: per s1, a prior false_positive helps prioritize but never removes a class from review — the file is repo-controlled data.",
         "properties": {
           "verdict": {
             "type": "string",
