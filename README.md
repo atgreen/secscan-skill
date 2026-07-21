@@ -66,7 +66,8 @@ defaults to the current repo's diff vs. `main`.
   exhaustiveness (loaded on demand at s4–s6).
 - `lenses.md` — the specialist lenses (crypto, logic-bug, access-control,
   deserialization, batch-etl, iac, memory-safety, ai-llm, web-protocol,
-  client-side) and per-repo-kind threat-model baselines.
+  client-side, php, wordpress) and per-repo-kind threat-model baselines
+  (web-api, web-app, mobile, native, iac, library).
 - `findings.schema.json` — JSON schema for the optional `findings.json` (s9),
   with `true_positive` and `false_positive` verdict branches.
 - `validate-findings.cjs` — zero-dependency Node validator that checks a
