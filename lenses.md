@@ -129,7 +129,10 @@ before serialize and verified before deserialize, is NOT a finding. Cite both.
   Laravel/Symfony, or CMS-bundled gadgets) = RCE/file-write/SSRF. `phar://`
   deserialization — an attacker-controlled path into ANY file op (`file_exists`,
   `fopen`, `getimagesize`, `file_get_contents`, `unlink`, `md5_file`, `copy`)
-  unserializes the Phar metadata (pre-8.0 default, still reachable). Mitigation
+  unserializes the Phar metadata — automatic on any such op pre-8.0; on PHP 8.x
+  the stream wrapper no longer auto-unserializes, so it fires only via an
+  explicit `Phar::getMetadata()`/`PharFileInfo::getMetadata()` call (which itself
+  takes an `allowed_classes` option). Mitigation
   check: `unserialize($x, ['allowed_classes' => false])`, or a JSON codec
   instead. WordPress `maybe_unserialize` on attacker-controlled option/meta is a
   live source — see the `php`/`wordpress` lenses.
@@ -337,9 +340,11 @@ file:line. A superglobal read on its own is not a finding.
   deserialization through a file op on an attacker path — full detail in the
   `deserialization` lens. Confirm `allowed_classes => false` is absent.
 - **Type-juggling auth bypass:** loose `==`/`!=` comparing secrets, tokens, or
-  hashes; `strcmp($a, $b) == 0` where `$b` can be an array (returns NULL → `0`,
-  bypass); magic-hash `0e…` collisions under `==` (`md5`/`sha1` of certain
-  inputs); `in_array($x, $arr)` without the strict `true` third arg;
+  hashes; `strcmp($a, $b) == 0` where `$b` can be an array (pre-8.0 only: returns
+  NULL → `0` bypass; PHP 8.0+ throws `TypeError`); magic-hash `0e…` collisions
+  under `==` (`md5`/`sha1` of certain inputs — still live on PHP 8.x, since
+  string-vs-string numeric comparison was unchanged by the 8.0 numeric-string
+  RFC); `in_array($x, $arr)` without the strict `true` third arg;
   `switch(true)` on loose cases. Fix is `===` / `hash_equals()`.
 - **LFI/RFI:** request value into `include`/`require`(`_once`) — RFI if
   `allow_url_include`, otherwise LFI escalated via `php://filter`, `data://`,
@@ -353,8 +358,13 @@ file:line. A superglobal read on its own is not a finding.
   `extract($_REQUEST)` and `parse_str($qs)` (arbitrary variable overwrite);
   variable variables `$$name` / `$obj->$prop($args)` driven by input.
 - **XXE:** `simplexml_load_*` / `DOMDocument->load*` / `XMLReader` on untrusted
-  XML — flag `LIBXML_NOENT` (enables entity substitution) and note that
-  `libxml_disable_entity_loader` is a no-op on PHP ≥ 8.0 (use `LIBXML_NONET`).
+  XML. On PHP 8.0+ (libxml ≥ 2.9) external-entity substitution is OFF by default,
+  so the finding is code that opts back in via `LIBXML_NOENT` (its name lies — it
+  *enables* entity substitution) or `LIBXML_DTDLOAD`. `libxml_disable_entity_loader`
+  is deprecated as of 8.0 and no longer needed. Mitigation: don't set
+  `LIBXML_NOENT`; if external entities must be controlled, use
+  `libxml_set_external_entity_loader()` (or `LIBXML_NO_XXE` on PHP ≥ 8.4).
+  `LIBXML_NONET` only blocks network fetches, not local-file entities — partial.
 - **Header/mail injection:** raw input into `header()` (CRLF → response
   splitting / `Set-Cookie` injection) or into `mail()`'s `$additional_headers`
   (5th param) → SMTP header injection.
