@@ -12,6 +12,19 @@ Identification & Auth Failures (weak session, missing MFA, JWT flaws) · A08
 Software & Data Integrity Failures (unsafe deserialization, unsigned updates) ·
 A10 SSRF · XSS (reflected/stored/DOM) · CSRF / state-changing GET.
 
+**web-app** (server-rendered apps, CMS, plugins/extensions —
+WordPress/Drupal/Laravel/Symfony): the OWASP-Top-10 spine of `web-api`, plus the
+host-platform trust model — a plugin/extension runs INSIDE the host, sharing its
+process, DB, auth, and privileges, so its single weakest endpoint exposes the
+whole site. Emphasis: A01 missing capability/role checks on admin and
+AJAX/`nopriv` actions (IDOR, priv-esc) · A03 Injection (SQLi via unparameterized
+queries, stored/reflected/DOM XSS, PHP object injection via `unserialize`/
+`phar://`, LFI via dynamic `include`) · A04 CSRF on state-changing forms/actions
+(missing anti-CSRF token/nonce) · A05 Misconfiguration (debug/stack traces on,
+exposed installer/`.env`/backups, directory listing) · A08 unrestricted file
+upload → web-shell · A10 SSRF from server-side fetch helpers. Apply the `php`
+and (for WordPress) `wordpress` lenses.
+
 **mobile** (OWASP MASVS): M1 Improper Credential Usage (hardcoded keys, token
 leakage) · M3 Insecure Auth/Authorization · M5 Insecure Communication (no cert
 pinning, cleartext) · M8 Security Misconfiguration (exported components,
@@ -112,6 +125,14 @@ before serialize and verified before deserialize, is NOT a finding. Cite both.
 - XML: XMLDecoder, XStream without hardened allow-list, JAXB XmlAdapter
   instantiating by class name. YAML: SnakeYAML new Yaml() on untrusted input
   (only SafeConstructor is safe). Python: pickle/yaml.load.
+- PHP: `unserialize()` on attacker bytes → POP/gadget chain (Monolog, Guzzle,
+  Laravel/Symfony, or CMS-bundled gadgets) = RCE/file-write/SSRF. `phar://`
+  deserialization — an attacker-controlled path into ANY file op (`file_exists`,
+  `fopen`, `getimagesize`, `file_get_contents`, `unlink`, `md5_file`, `copy`)
+  unserializes the Phar metadata (pre-8.0 default, still reachable). Mitigation
+  check: `unserialize($x, ['allowed_classes' => false])`, or a JSON codec
+  instead. WordPress `maybe_unserialize` on attacker-controlled option/meta is a
+  live source — see the `php`/`wordpress` lenses.
 - Others: Kryo, Hessian/Burlap, FST, Spring DefaultDeserializer, RedisTemplate
   with JdkSerializationRedisSerializer on shared Redis.
 - Mitigation check: ObjectInputFilter/allow-list applied BEFORE readObject? If
@@ -304,3 +325,80 @@ authZ, path traversal) raised against pure client code are OUT OF SCOPE
   action); a client-source navigation (`location = params.get('next')`, incl.
   `javascript:`/`data:`) with no allow-list. `target="_blank"` tabnabbing only
   where `rel="opener"`/`window.open` without `noopener` (modern browsers imply it).
+
+### php
+Server-side PHP dangerous-sink expert (plain PHP, CMS plugins/themes,
+Laravel/Symfony/Drupal). Complements `access-control`/`crypto`/`deserialization`
+with idioms unique to PHP's loose typing and stream wrappers. **HARD GATE:**
+trace request input (`$_GET`/`$_POST`/`$_REQUEST`/`$_COOKIE`/`$_FILES`/`$_SERVER`,
+`php://input`, framework request object) to the sink; cite source and sink
+file:line. A superglobal read on its own is not a finding.
+- **Object injection:** `unserialize()` on attacker bytes, and `phar://`
+  deserialization through a file op on an attacker path — full detail in the
+  `deserialization` lens. Confirm `allowed_classes => false` is absent.
+- **Type-juggling auth bypass:** loose `==`/`!=` comparing secrets, tokens, or
+  hashes; `strcmp($a, $b) == 0` where `$b` can be an array (returns NULL → `0`,
+  bypass); magic-hash `0e…` collisions under `==` (`md5`/`sha1` of certain
+  inputs); `in_array($x, $arr)` without the strict `true` third arg;
+  `switch(true)` on loose cases. Fix is `===` / `hash_equals()`.
+- **LFI/RFI:** request value into `include`/`require`(`_once`) — RFI if
+  `allow_url_include`, otherwise LFI escalated via `php://filter`, `data://`,
+  session/log poisoning, or an uploaded file → RCE; also user path into
+  `file_get_contents`/`readfile`/`fopen` (arbitrary read + wrapper abuse).
+- **Command exec:** `system`/`exec`/`passthru`/`shell_exec`/`proc_open`/`popen`/
+  backticks with unescaped input; `escapeshellarg`/`escapeshellcmd` applied to
+  the whole command line instead of each argument, or missing entirely.
+- **Dynamic code / variable injection:** `eval`, `assert($input)` (evaluates a
+  string pre-8.0), `create_function`, `preg_replace('/…/e', …)`;
+  `extract($_REQUEST)` and `parse_str($qs)` (arbitrary variable overwrite);
+  variable variables `$$name` / `$obj->$prop($args)` driven by input.
+- **XXE:** `simplexml_load_*` / `DOMDocument->load*` / `XMLReader` on untrusted
+  XML — flag `LIBXML_NOENT` (enables entity substitution) and note that
+  `libxml_disable_entity_loader` is a no-op on PHP ≥ 8.0 (use `LIBXML_NONET`).
+- **Header/mail injection:** raw input into `header()` (CRLF → response
+  splitting / `Set-Cookie` injection) or into `mail()`'s `$additional_headers`
+  (5th param) → SMTP header injection.
+
+### wordpress
+WordPress plugin/theme/core expert. WP's security model is mostly the ABSENCE of
+specific calls — hunt for what is NOT there. The code runs INSIDE WordPress,
+sharing its auth and DB, so any `nopriv`-reachable sink is internet-facing.
+**HARD GATE:** cite the registered entry point (hook/route/handler at file:line)
+AND the missing or bypassed control at the sink. Run the `php` lens in parallel
+(WP is PHP). "Requires login" is not authorization; a nonce is not
+authorization.
+- **Entry points to enumerate:** `add_action('wp_ajax_{a}', …)` /
+  `'wp_ajax_nopriv_{a}'`; `register_rest_route(..., 'permission_callback' => …)`;
+  `admin_post_{a}` / `admin_post_nopriv_{a}`; `add_shortcode`; hooks on
+  `init`/`template_redirect`/`admin_init` that read `$_REQUEST`; block
+  `render_callback`; settings/form handlers. `_nopriv_` or
+  `'permission_callback' => '__return_true'` = **unauthenticated**.
+- **Missing capability check:** a state-changing or data-returning handler with
+  no `current_user_can('…')` (or the wrong capability) → horizontal/vertical
+  priv-esc (a subscriber invoking an admin action). `is_user_logged_in()` alone
+  is not authorization.
+- **Missing/incorrect nonce:** state-changing action with no
+  `check_admin_referer` / `check_ajax_referer` / `wp_verify_nonce` → CSRF. Nonce
+  present but capability absent (or vice-versa) is still a finding — WP needs
+  both.
+- **SQLi:** input interpolated into `$wpdb->query`/`get_results`/`get_var`/
+  `get_col` without `$wpdb->prepare`; a `prepare()` whose placeholder is inside
+  quotes (`'%s'`), or whose query is built by concatenation before `prepare`, is
+  still injectable; table/column/`ORDER BY` names can't be placeheld — require an
+  allow-list. `%i` (identifier) exists in WP ≥ 6.2.
+- **XSS:** output echoed without `esc_html`/`esc_attr`/`esc_url`/`esc_js`/
+  `wp_kses[_post]`; the classic reflected sink is `add_query_arg`/
+  `remove_query_arg` echoed unescaped (they do NOT escape). Input side: missing
+  `sanitize_text_field`/`sanitize_email`/`absint`/`wp_kses`. `the_content` /
+  `do_shortcode` on attacker data is a stored-XSS sink.
+- **Arbitrary file:** `$_FILES` handled without `wp_check_filetype_and_ext` /
+  `wp_handle_upload` (a `.php` upload into a servable dir → web-shell);
+  `unlink`/`wp_delete_file` on a request-derived path (traversal → arbitrary
+  delete); `download_url`/`copy`/`file_put_contents` writing under the web root.
+- **SSRF:** user URL into `wp_remote_get`/`wp_remote_post`/`wp_remote_request`
+  (use `wp_safe_remote_*` + host allow-list), or `download_url` on a request URL
+  with no scheme/host restriction.
+- **Options/meta injection:** `update_option`/`update_user_meta`/
+  `update_post_meta` with a request-controlled key or value (setting can flip
+  privileged config); attacker-controlled meta later hydrated by
+  `maybe_unserialize` → PHP object injection (see the `deserialization` lens).
