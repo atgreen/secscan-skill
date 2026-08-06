@@ -66,7 +66,8 @@ defaults to the current repo's diff vs. `main`.
   exhaustiveness (loaded on demand at s4–s6).
 - `lenses.md` — the specialist lenses (crypto, logic-bug, access-control,
   deserialization, batch-etl, iac, memory-safety, ai-llm, web-protocol,
-  client-side) and per-repo-kind threat-model baselines.
+  client-side, php, wordpress) and per-repo-kind threat-model baselines
+  (web-api, web-app, mobile, native, iac, library).
 - `cwe-kb.md` — per-CWE taint knowledge base (sources, sinks, real sanitizers
   vs. look-alike non-sanitizers, false-positive checks, and attacker bypass
   hints) plus a source/sink recognition taxonomy (sanitizer names, reflection
