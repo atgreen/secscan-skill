@@ -67,6 +67,11 @@ defaults to the current repo's diff vs. `main`.
 - `lenses.md` — the specialist lenses (crypto, logic-bug, access-control,
   deserialization, batch-etl, iac, memory-safety, ai-llm, web-protocol,
   client-side) and per-repo-kind threat-model baselines.
+- `cwe-kb.md` — per-CWE taint knowledge base (sources, sinks, real sanitizers
+  vs. look-alike non-sanitizers, false-positive checks, and attacker bypass
+  hints) plus a source/sink recognition taxonomy (sanitizer names, reflection
+  sinks, framework request-binding sources). Loaded before s4; drives discovery
+  (s4), pre-filter (s5), and adversarial verify (s6).
 - `findings.schema.json` — JSON schema for the optional `findings.json` (s9),
   with `true_positive` and `false_positive` verdict branches.
 - `validate-findings.cjs` — zero-dependency Node validator that checks a

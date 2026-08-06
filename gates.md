@@ -77,7 +77,13 @@ gates.
 1. **REACHABLE** — An external or lower-privileged caller can actually hit this
    path. Walk backward from the sink and name the entry point.
 2. **UNMITIGATED** — No validation, encoding, allow-list, or framework control
-   between source and sink already neutralizes it.
+   between source and sink already neutralizes it. Check against the finding's
+   CWE row in `cwe-kb.md`: a listed **SANITIZER** on the path (correct for the
+   sink's context, covering every route in) means drop it; a **NON-SANITIZER**
+   (manual escaping, regex blacklist, `basename` alone, scheme-only allow-list,
+   `startswith('/')`, client-side-only checks) does NOT neutralize it — keep the
+   finding. When a real defense is present, confirm the CWE's **BYPASS HINTS**
+   don't slip past before ruling it mitigated.
 3. **CONCRETE** — You can state the exact payload and the exact effect in one
    sentence. "Could potentially" = not a finding.
 4. **IN SCOPE** — Does not match any exclusion group A–E above.
