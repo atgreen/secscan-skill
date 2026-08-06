@@ -74,27 +74,53 @@ until you prove otherwise.** Read the patched code (not your memory of the diff)
 and score four gates:
 - **root_cause** — Is the original exploit chain actually severed, or just the
   one payload in the report? Can the attacker still reach the sink another way?
+  Run the finding's CWE **BYPASS HINTS** from `cwe-kb.md` against the patched
+  code — a fix that stops the reported payload but not the encoded/second-order/
+  argument-injection variant has not severed the root cause.
 - **instance_coverage** — Any unpatched instance of the same flaw, in this file
   or a sibling? Alternate path to the same sink?
 - **no_new_vulnerabilities** — Did the fix introduce a null-deref on unexpected
   input, a race, an error path that leaks info, a behavior change for legit
   callers, or a default that differs dev-vs-prod?
 - **security_best_practices** — Idiomatic and complete (full encoding, not
-  partial; server-side, not client-only)?
+  partial; server-side, not client-only)? Watch for a NON-SANITIZER from
+  `cwe-kb.md` masquerading as the fix (manual escaping, a regex blacklist,
+  `basename` alone) — that is not a real remediation.
 
-Each gate cites `file:line` from the patched tree. Collapse to a verdict:
+Each gate cites `file:line` from the patched tree. If a gate genuinely can't be
+evaluated (can't establish the path on the current tree, can't build to observe
+behavior), mark it **unevaluated** — never guess it "pass". Collapse to a verdict:
 - **Fixed** — all four hold.
 - **Partially Fixed** — root cause severed but coverage/best-practice gaps
   remain; state the residual risk.
 - **Not Fixed** — root cause not severed, or the fix introduced a new issue.
+- **UNVERIFIABLE** — you couldn't evaluate enough of the gates to trust any
+  verdict (in particular, `no_new_vulnerabilities` was left unevaluated). Don't
+  average an unknown into "Partially Fixed" — say it's unverifiable and hand the
+  user the choice below. Fail closed, not fail quiet.
+
+**`no_new_vulnerabilities` is a non-waivable critical gate.** A high score on the
+other three cannot outweigh it: if the fix introduces a new issue (gate fails),
+the verdict is capped below **Fixed** (Partially Fixed at best, with the new
+issue called out as its own finding); if you couldn't evaluate it at all, the
+verdict is **UNVERIFIABLE**. A fix that trades one vuln for another is not a fix.
 
 Token discipline: one adversarial pass in-session by default. Only fan out to
 `security-architect` + `penetration-tester` subagents if the user asks for a
 thorough validation or the finding is high-stakes and you're genuinely unsure.
+When you *do* fan out, merge their per-gate votes conservatively — never average:
+- A persona that **couldn't evaluate** a gate abstains; its non-vote never
+  outweighs one that did evaluate. Only if *nobody* evaluated a gate is it
+  unevaluated (→ UNVERIFIABLE if that gate is `no_new_vulnerabilities`).
+- 2+ evaluators agreeing on a status → take it (high confidence). A tie, a lone
+  voice, or disagreement → take the **most conservative** (worst-case) status
+  and flag it for the user. The most cautious verdict wins; a "pass" never buries
+  a "fail".
 
-**On Not Fixed**, offer three choices — don't loop silently: (a) iterate once
-more, (b) keep the partial patch with the residual risk documented, or (c)
-revert. Respect the user's call.
+**On Not Fixed or UNVERIFIABLE**, offer three choices — don't loop silently:
+(a) iterate once more (for UNVERIFIABLE, first say what evidence you'd need to
+reach a verdict), (b) keep the partial patch with the residual risk / unverified
+gaps documented, or (c) revert. Respect the user's call.
 
 **Secret-rotation cap.** For a hardcoded-credential fix, the verdict is capped
 at **Partially Fixed** until the user confirms the credential was rotated /

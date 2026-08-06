@@ -96,7 +96,11 @@ signal high.
   `web-app`.
 - Map **entry points** (HTTP routes, message handlers, CLI argv, file/dir
   watchers, deserializers) and **sinks** (SQL, exec/system, file paths, crypto,
-  templating, response writers). Grep for the patterns, list file:line.
+  templating, response writers). Grep for the patterns, list file:line. Use the
+  **Shared taxonomy** in `cwe-kb.md` to recognize framework-bound taint sources
+  (Spring/Django/ASP.NET request binding, route params), reflection/dynamic-
+  dispatch sinks per language, and response-side (output) sinks — these are easy
+  to miss with a naive grep.
 - Pick the **specialist lenses** that match the code (default set:
   `crypto, logic-bug, access-control, batch-etl, iac`). Add the ones the code
   calls for: `deserialization` (JVM/pickle/yaml/PHP `unserialize`+`phar://`),
@@ -138,9 +142,28 @@ Group the code into focused slices: by entry point + the path to its sinks, by
 specialist scope, plus a catch-all sweep so nothing is unread. Each slice is one
 deep-dive unit.
 
+**Reachability-first budgeting (with a fail-open guard).** Spend the deep-dive
+budget on code that lies on a plausible source→sink path first — a file no entry
+point can reach and no sink sits in is low-yield. But scoping-down is only safe
+when it *isn't* hiding most of the repo:
+- **Fail open if the pruning is suspiciously sparse.** If "reachable-only" would
+  drop more than ~half of the eligible files, don't trust your reachability call
+  — revert to reviewing everything in scope. A shallow in-session trace misses
+  edges; treat a sparse result as your own blind spot, not as clean code.
+- **Files in an unfamiliar language get no static seed — treat them as
+  reachable**, not as skipped.
+- **List what you deprioritized.** Whatever you consciously left for last or out
+  of this pass goes in the s9 report's coverage note (the "unreviewed / lower-
+  priority" appendix). Silent truncation reads as "covered everything" when it
+  didn't.
+
 ### s4 — Deep-dive (discovery)
 For **each slice**, apply the deep-dive lens below. Trace data flow; do not
-pattern-match. Apply the matching specialist lens(es) from `lenses.md`.
+pattern-match. Apply the matching specialist lens(es) from `lenses.md`, and for
+any candidate vuln class splice in the matching CWE row from `cwe-kb.md` (read it
+now if you haven't) — it names the real sinks to look for and, crucially, the
+NON-SANITIZERS that only *look* like defenses so you don't discard a real bug on
+sight.
 
 > **You are a security researcher performing deep code analysis.** Treat the
 > slice as hostile: assume at least one exploitable defect is present and do not
@@ -179,8 +202,9 @@ used unsafely), confidence (0–1).
 
 ### s5 — Pre-filter (deterministic, free)
 Drop any finding that: is below ~0.5 confidence; lacks a real `source_ref` AND
-`sink_ref` you actually read; or matches an exclusion group A–E. No line numbers
-= no proof = drop.
+`sink_ref` you actually read; matches an exclusion group A–E; or matches an **FP
+CHECK** for its CWE in `cwe-kb.md` (e.g. CWE-89 taint reaches a bound parameter
+value, not the SQL string). No line numbers = no proof = drop.
 
 ### s6 — Adversarial verify (mandatory)
 For **each surviving finding**, switch hats: you are the second-opinion
@@ -192,10 +216,25 @@ reviewer. **Assume the finding is WRONG until you confirm it in the source.**
   encoding/parameterization, type/length limits, auth gates, prod-disabling
   flags, test-only/dead code. If you find a defense, probe whether it covers
   *every* route into the sink and survives edge-case input.
+- **Use `cwe-kb.md` for the finding's CWE.** A **SANITIZER** on the confirmed
+  path is grounds to refute — but only if it's the right control for the sink's
+  context and covers every route in. A **NON-SANITIZER** (manual escaping, a
+  regex blacklist, `basename` alone, a scheme-only allow-list, `startswith('/')`)
+  is NOT a defense — do not refute on its basis. Before you refute *because* a
+  defense exists, run that CWE's **BYPASS HINTS** against it (encoding tricks,
+  argument injection, decimal/IPv6 IPs, scheme-relative hosts, gadget chains,
+  parameter entities, …); if any slips past, the finding stands and you now have
+  a concrete exploit.
 - Verdict TRUE_POSITIVE only when an external/low-priv entry point reaches the
   sink, no defense fully closes it, and impact is real. Assign a CVSS 3.1 base
   vector. Confidence 8–10 means you actively searched for the opposite verdict
   and couldn't support it.
+- **If you fan out verification** to multiple subagents (only when the user asks
+  or a finding is high-stakes), merge conservatively — never average: an agent
+  that couldn't evaluate abstains and never outweighs one that did; on a tie or
+  disagreement take the **most conservative** verdict. A "false positive" vote
+  never buries a confirmed "true positive". Same rule governs remediation
+  validation (see `remediate.md` r3).
 
 ### s6b — Reproduce (the strongest verification)
 For each finding that survives s6, **build a reproducer** — a runnable artifact
@@ -272,8 +311,10 @@ severity + CVSS vector, CWE, source_ref → sink_ref, exploit scenario,
 must run elsewhere), recommendation. Lead with a one-paragraph summary (repo
 kind, lenses run, scope covered, counts by severity). State explicitly:
 **triage candidates requiring human review**; note anything left out of scope
-(including out-of-scope-per-policy items from s1). Offer to write SARIF, to land
-reproducers as regression tests, or to widen scope.
+(including out-of-scope-per-policy items from s1) and, per s3, a short **coverage
+appendix** listing files/areas deprioritized or not reviewed this pass so the
+gaps are explicit. Offer to write SARIF, to land reproducers as regression
+tests, or to widen scope.
 
 **Recommendations are code-level only.** Name the concrete code change
 (parameterized query, output encoding, constant-time compare, input allow-list,
@@ -325,7 +366,8 @@ confirm-the-path rule applies before any write.
 
 ## Quick start
 "Scan <path> for vulnerabilities" → s1 on that path. If no path, ask or default
-to the current repo's diff vs main. Read `lenses.md` and `gates.md` before s4.
+to the current repo's diff vs main. Read `lenses.md`, `gates.md`, and `cwe-kb.md`
+before s4.
 
 If the user then asks to **fix** named findings ("fix #1 and #3", "fix the
 HIGHs"), read `remediate.md` and follow it. Remediation is opt-in and is the
