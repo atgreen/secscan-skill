@@ -220,7 +220,7 @@ Apply these gates from `gates.md` (read it once, keep in context):
 **EXCLUSION_RULES** (what NOT to flag), **SELF_VERIFICATION** (six checks every
 finding must pass, starting with naming the attacker and the boundary), **SEVERITY_GUIDANCE** (rate the exploit, not the bug class),
 **EXHAUSTIVENESS** (review the whole scope; reporting zero findings is fine —
-never invent one).
+never invent one — but a slice that found nothing must show it looked).
 
 Record each finding by stating its **threat model first** — the **attacker**
 (a distinct actor and what they already hold: unauthenticated remote client,
@@ -262,6 +262,15 @@ Rules, because a wishlist that drifts becomes a false-findings list:
 lens, set from what you actually did, not from what you intended. Do it as you
 finish the slice, not at the end of s4; a state you reconstruct from memory two
 slices later is a guess.
+
+**A slice that found nothing owes you evidence that it looked.** Zero findings is
+a fine result, but *clean* and *nothing came back* are different outcomes that
+look identical in a report. Before recording a slice as reviewed-and-clean, state
+what you examined — files read, entry points and sinks enumerated, lenses
+applied, and any path that defeated you (unreadable language, opaque dependency,
+budget). If you can't, the row is `thin` or `not-run`, not `covered`, and the
+slice goes on the gapfill shortlist. Treat an empty slice as a prompt to check
+whether the review actually happened, not as a clean bill of health.
 
 ### s5 — Pre-filter (deterministic, free)
 Drop any finding that: is below ~0.5 confidence; lacks a real `source_ref` AND

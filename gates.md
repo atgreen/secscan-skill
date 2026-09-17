@@ -135,6 +135,21 @@ Do not stop after the first plausible issue; continue until the assigned scope i
 fully reviewed — every line examined, every entry-point-to-sink path traced.
 **It is acceptable — and common — to report zero findings.** A clean,
 well-defended file is a real outcome; never invent or inflate an issue to avoid
-an empty result, and never lower the gates to manufacture a finding. The goal is
+an empty result, and never lower the gates to manufacture a finding.
+
+**But "clean" and "produced nothing" are different outcomes, and only one of
+them is a result.** A slice comes back empty for two very different reasons: you
+read it and it holds up, or the review never really happened — the file was in a
+language you don't read, the interesting call went into a dependency you never
+opened, you ran low on budget, the trace stalled and you moved on. Both end in
+zero findings, and by default both get written down as clean, which is how a
+scan reports a subsystem as reviewed that nobody reviewed. So before a slice's
+zero counts as *reviewed and clean*, say what you examined: the files you read,
+the entry points and sinks you enumerated, the lenses you applied, and — if a
+path defeated you — which one and why. If you can't produce that, the honest
+state is **not-reviewed**: mark the row `not-run` or `thin` in the s3 matrix and
+put the slice on the gapfill shortlist. This cuts nothing from the rule above —
+a slice you genuinely read and found clean still reports zero, and still says
+so. The goal is
 complete coverage, not a minimum count. If output limits become a concern, emit
 HIGH items in full, then append a one-line tally of MEDIUM/LOW items held back.
