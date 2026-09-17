@@ -34,9 +34,14 @@ is gated, severity-calibrated, and adversarially verified before it's reported.
   adversarially validates each patch.
 - **Honest output.** Zero findings is a valid result. Findings are triage
   candidates requiring human review, never represented as confirmed vulns.
+- **Threat model first.** Every finding must name *who* the attacker is and
+  *which* trust boundary their input crosses before it gets a title. A
+  dangerous-looking sink with no actor and no boundary is a tautology, and
+  saying so up front is what stops it dressing up as a vulnerability.
 - **Structured, checkable output.** s9 can emit a `findings.json` conforming to
-  `findings.schema.json` and validated by a zero-dependency script — a
-  machine-readable form of the same triage candidates, on request.
+  `findings.schema.json` and validated by a zero-dependency script — which also
+  resolves every cited `file:line` against the scanned tree, so a hallucinated
+  citation fails instead of reaching a human.
 - **Coverage accumulates.** A single pass never finds everything. Persisted
   findings (opt-in) let a later scan skip what's confirmed and target the gaps.
 
@@ -62,7 +67,8 @@ defaults to the current repo's diff vs. `main`.
 
 - `SKILL.md` — the skill definition and pipeline (loaded by Claude Code).
 - `gates.md` — exclusion rules, anti-manipulation (suppression annotations are
-  not evidence), the five-check self-verification, severity calibration, and
+  not evidence), the six-check self-verification (which opens by naming the
+  attacker and the trust boundary crossed), severity calibration, and
   exhaustiveness (loaded on demand at s4–s6).
 - `lenses.md` — the specialist lenses (crypto, logic-bug, access-control,
   deserialization, batch-etl, iac, memory-safety, ai-llm, web-protocol,

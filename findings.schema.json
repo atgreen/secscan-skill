@@ -1,5 +1,5 @@
 {
-  "$comment": "Single source of truth for findings.json structure (see SKILL.md s9). validate-findings.cjs reads this file directly and interprets it. Each finding is a secscan TRIAGE CANDIDATE, not a confirmed vulnerability — a true_positive survived s6 adversarial verification but still requires human review. Schema shape adapted from cloudflare/security-audit-skill (MIT); field names are secscan's own.",
+  "$comment": "Single source of truth for findings.json structure (see SKILL.md s9). validate-findings.cjs reads this file directly and interprets it. Each finding is a secscan TRIAGE CANDIDATE, not a confirmed vulnerability — a true_positive survived s6 adversarial verification but still requires human review. A true_positive states its threat model first: `attacker` and `boundary_crossed` lead the required list because a finding that cannot name an actor and a boundary is a tautology ('exec() executes things, therefore critical'), not a vulnerability. Schema shape adapted from cloudflare/security-audit-skill (MIT); field names are secscan's own.",
   "output_schema": {
     "oneOf": [
       {
@@ -9,6 +9,14 @@
           "verdict": {
             "type": "string",
             "const": "true_positive"
+          },
+          "attacker": {
+            "type": "string",
+            "description": "WHO the attacker is and what they already hold, before this bug. Name a distinct actor: 'an unauthenticated remote client', 'any logged-in user of another tenant', 'a co-located unprivileged process', 'whoever supplies the input archive'. Not 'an attacker'. If the only actor who can trigger this already has the outcome it grants, there is no finding."
+          },
+          "boundary_crossed": {
+            "type": "string",
+            "description": "WHICH trust boundary the input crosses on its way to the sink, as from -> to: 'HTTP query string -> SQL text on the primary DB', 'archive entry name -> filesystem path outside the extraction dir', 'renderer IPC message -> privileged main-process handler'. Code doing what its caller is already entitled to do crosses no boundary and is not a vulnerability, however dangerous the function it calls."
           },
           "title": {
             "type": "string",
@@ -88,7 +96,7 @@
             "description": "0-1. 0.8-1.0 means you actively searched for the opposite verdict in s6 and couldn't support it."
           }
         },
-        "required": ["verdict", "title", "severity", "cwe", "vuln_class", "source_ref", "sink_ref", "impact", "description", "exploit_scenario", "preconditions", "reproducer", "recommendation", "confidence"],
+        "required": ["verdict", "attacker", "boundary_crossed", "title", "severity", "cwe", "vuln_class", "source_ref", "sink_ref", "impact", "description", "exploit_scenario", "preconditions", "reproducer", "recommendation", "confidence"],
         "additionalProperties": false
       },
       {

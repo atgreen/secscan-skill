@@ -189,12 +189,19 @@ sight.
 >   just unescaped ingestion.
 
 Apply these gates from `gates.md` (read it once, keep in context):
-**EXCLUSION_RULES** (what NOT to flag), **SELF_VERIFICATION** (five checks every
-finding must pass), **SEVERITY_GUIDANCE** (rate the exploit, not the bug class),
+**EXCLUSION_RULES** (what NOT to flag), **SELF_VERIFICATION** (six checks every
+finding must pass, starting with naming the attacker and the boundary), **SEVERITY_GUIDANCE** (rate the exploit, not the bug class),
 **EXHAUSTIVENESS** (review the whole scope; reporting zero findings is fine —
 never invent one).
 
-Record each finding with: file, line_start/end, vuln_class, cwe, title, impact,
+Record each finding by stating its **threat model first** — the **attacker**
+(a distinct actor and what they already hold: unauthenticated remote client,
+another tenant's logged-in user, a co-located unprivileged process, whoever
+supplies the input file — never just "an attacker") and the **trust boundary**
+crossed, `from -> to` (`HTTP query string -> SQL text`, `archive entry name ->
+path outside the extraction dir`). Write these down *before* the title. If you
+can't name both, you have a dangerous-looking function, not a finding — drop it.
+Then: file, line_start/end, vuln_class, cwe, title, impact,
 description (input→bug data flow), exploit_scenario, preconditions,
 recommendation, code_snippet (redact any secret it contains — see s9),
 **source_ref** (file:line where input enters) and **sink_ref** (file:line where
@@ -225,6 +232,12 @@ reviewer. **Assume the finding is WRONG until you confirm it in the source.**
   argument injection, decimal/IPv6 IPs, scheme-relative hosts, gadget chains,
   parameter entities, …); if any slips past, the finding stands and you now have
   a concrete exploit.
+- **Re-derive the attacker and the boundary yourself** — don't inherit s4's.
+  Ask who can reach this who doesn't already hold what it grants, and what
+  boundary their input crosses. If the honest answer is "someone who already has
+  this access anyway", or "nothing is crossed", the finding dies here no matter
+  how clean the data flow is. This kills the tautological finding that survived
+  s4 on the strength of a scary-looking sink.
 - Verdict TRUE_POSITIVE only when an external/low-priv entry point reaches the
   sink, no defense fully closes it, and impact is real. Assign a CVSS 3.1 base
   vector. Confidence 8–10 means you actively searched for the opposite verdict
@@ -335,7 +348,8 @@ amplifies the exposure.
 **Structured output (offer alongside the Markdown).** Offer to emit
 `findings.json` conforming to `findings.schema.json` (in this skill's directory —
 Read it before writing). It has two `verdict` branches: `true_positive` (a
-survivor, with `source_ref`/`sink_ref` as `file:line` strings, `cwe`,
+survivor, leading with `attacker` and `boundary_crossed` — the threat model
+comes before the title — then `source_ref`/`sink_ref` as `file:line` strings, `cwe`,
 `cvss_vector`, `severity`, `reproducer`, `recommendation`, `confidence` 0–1) and
 `false_positive` (title + `reason`, for anything killed in s5/s6 you want on
 record). A finding downgraded under gates.md rule 0 carries the quoted clause in
