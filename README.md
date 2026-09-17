@@ -33,7 +33,9 @@ is gated, severity-calibrated, and adversarially verified before it's reported.
   (`remediate.md`), which edits only when you name findings to fix and
   adversarially validates each patch.
 - **Honest output.** Zero findings is a valid result — though a slice that
-  found nothing has to show it actually looked. Findings are triage candidates
+  found nothing has to show it actually looked. Reproducers are a positive-only
+  signal: one that fires confirms a finding, one that stays silent proves
+  nothing and never quietly shaves a severity. Findings are triage candidates
   requiring human review, never represented as confirmed vulns. Every report
   carries its triage funnel (candidates → pre-filter → verified) so the gates
   are inspectable; no scan claims a detection rate, because there's no ground

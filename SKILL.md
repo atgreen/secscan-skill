@@ -357,9 +357,23 @@ candidate, and stop once the bug is demonstrated.
   local program that demonstrates the defect deterministically. Label it clearly
   as a model, not a live exploit.
 - **Be honest about what ran.** State which reproducers you actually executed
-  and their output, versus source-only ones the user must run elsewhere. A
-  reproducer that fails to trigger is a strong signal to downgrade or drop the
-  finding — fold that back into the verdict.
+  and their output, versus source-only ones the user must run elsewhere. Never
+  describe a check you didn't perform as though you had.
+- **A reproducer is a positive-only signal.** One that fires confirms the
+  finding and raises its confidence. One that *doesn't* fire proves nothing and
+  **never downgrades or drops a finding on its own** — record it as "not
+  reproduced here", with the reason, and leave the s6 verdict and severity
+  exactly as s6 set them. A silent reproducer is indistinguishable from a
+  missing dependency, the wrong entry point, a swallowed error, or a model you
+  transcribed slightly wrong — and since execution safety forbids running the
+  target's own build or test harness, most of our reproducers are hand-written
+  approximations whose silence says more about them than about the code. The s6
+  static verdict is the authority; s6b can only add evidence to it.
+- **If a reproducer's failure genuinely changes your mind**, that's a finding
+  about the *code*, not about the reproducer: go back into s6, name the defense
+  or missing path you now see in the source, and refute it there on the
+  evidence. What you may not do is let an unexplained non-result quietly shave a
+  severity.
 - **Landing tests:** if the project wants regression coverage, write the
   reproducer in the repo's own test style (valid inputs, asserts on correct
   behavior) so it passes once fixed and is safe to land — and check the bug's

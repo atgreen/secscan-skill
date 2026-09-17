@@ -74,8 +74,8 @@
             "properties": {
               "status": {
                 "type": "string",
-                "enum": ["ran", "model", "source-only", "none"],
-                "description": "ran = a reproducer built from your OWN sources executed here in an isolated dir (never the target's build or test harness — s6b execution safety); model = an extracted local model transcribed from source; source-only = source + commands the user must run in a sandbox elsewhere; none = not reproduced."
+                "enum": ["ran", "model", "source-only", "not-reproduced", "none"],
+                "description": "ran = a reproducer built from your OWN sources executed here in an isolated dir and it FIRED (never the target's build or test harness — s6b execution safety); model = an extracted local model transcribed from source that demonstrated the defect; source-only = source + commands the user must run in a sandbox elsewhere; not-reproduced = a reproducer was built and run but did not fire — a positive-only signal, so this NEVER lowers the verdict, severity or confidence s6 assigned (s6b); none = no reproducer was attempted."
               },
               "detail": {
                 "type": "string",
