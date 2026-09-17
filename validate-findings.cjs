@@ -7,7 +7,7 @@
 
 /**
  * Validates a secscan findings.json against findings.schema.json.
- * Usage: node validate-findings.cjs <path-to-findings.json>
+ * Usage: node validate-findings.cjs [--repo <root>] <path-to-findings.json>
  *
  * The validation rules live in findings.schema.json — the single source of
  * truth. This script reads that schema at runtime and interprets the subset of
@@ -19,18 +19,75 @@
  * look like file:line). They're applied as an explicit, clearly-labelled
  * semantic layer after schema validation.
  *
- * Structural check only — it confirms the JSON conforms to the schema, not that
- * the findings are correct (that was s6's job). Zero dependencies. Exits 0 on
- * success, 1 on validation failure.
+ * With --repo <root>, a third layer resolves every file:line citation against
+ * the scanned tree: the file must exist inside it and the line must be in
+ * range and non-blank. A citation that doesn't resolve was never read, it was
+ * imagined — the cheapest filter there is on the dominant LLM-SAST failure
+ * mode, and it costs no model tokens. Without --repo the citation layer is
+ * skipped and behaviour is unchanged.
+ *
+ * Still a structural check — a resolving citation proves the line exists, not
+ * that the finding is correct (that was s6's job). Zero dependencies. Exits 0
+ * on success, 1 on validation failure.
  */
 
 const fs = require("fs");
 const path = require("path");
 
-const file = process.argv[2];
+const USAGE = "Usage: node validate-findings.cjs [--repo <root>] <path-to-findings.json>";
+
+// --repo is optional: without it we check shape only, with it we also resolve
+// every citation against the tree that was scanned.
+let file = null;
+let repoArg = null;
+const argv = process.argv.slice(2);
+for (let i = 0; i < argv.length; i++) {
+	const arg = argv[i];
+	if (arg === "--repo") {
+		repoArg = argv[++i];
+		if (repoArg === undefined) {
+			console.error("--repo requires a path");
+			process.exit(1);
+		}
+	} else if (arg.startsWith("--repo=")) {
+		repoArg = arg.slice("--repo=".length);
+	} else if (arg === "-h" || arg === "--help") {
+		console.log(USAGE);
+		process.exit(0);
+	} else if (arg.startsWith("-") && arg !== "-") {
+		console.error(`Unknown option: ${arg}\n${USAGE}`);
+		process.exit(1);
+	} else if (file === null) {
+		file = arg;
+	} else {
+		console.error(`Unexpected extra argument: ${arg}\n${USAGE}`);
+		process.exit(1);
+	}
+}
+
 if (!file) {
-	console.error("Usage: node validate-findings.cjs <path-to-findings.json>");
+	console.error(USAGE);
 	process.exit(1);
+}
+
+let repoRoot = null;
+if (repoArg !== null) {
+	if (repoArg === "") {
+		console.error("--repo requires a path");
+		process.exit(1);
+	}
+	repoRoot = path.resolve(repoArg);
+	let stat;
+	try {
+		stat = fs.statSync(repoRoot);
+	} catch (e) {
+		console.error(`--repo: cannot stat ${repoRoot}: ${e.message}`);
+		process.exit(1);
+	}
+	if (!stat.isDirectory()) {
+		console.error(`--repo: not a directory: ${repoRoot}`);
+		process.exit(1);
+	}
 }
 
 const schemaPath = path.join(__dirname, "findings.schema.json");
@@ -193,6 +250,73 @@ function isFileLine(ref) {
 	return typeof ref === "string" && /^.+:\d+$/.test(ref.trim());
 }
 
+// --- Citation layer (only with --repo) ----------------------------------------
+// Resolve each file:line against the scanned tree. A finding that points at a
+// file that isn't there, or past the end of one, was not read — it was
+// imagined, and no amount of prose around it makes the path real.
+
+const fileCache = new Map();
+
+// Read a file once and split it into lines. A trailing newline terminates the
+// last line rather than starting an empty one, so `foo\n` is one line, not two.
+function linesOf(abs) {
+	if (fileCache.has(abs)) return fileCache.get(abs);
+	let result;
+	try {
+		const lines = fs.readFileSync(abs, "utf8").split("\n");
+		if (lines.length > 1 && lines[lines.length - 1] === "") lines.pop();
+		result = { lines };
+	} catch (e) {
+		result = { error: e.message };
+	}
+	fileCache.set(abs, result);
+	return result;
+}
+
+// Split on the LAST colon: a Windows path or a URL-ish prefix may contain others.
+function splitRef(ref) {
+	const trimmed = String(ref).trim();
+	const idx = trimmed.lastIndexOf(":");
+	return { relPath: trimmed.slice(0, idx), line: Number(trimmed.slice(idx + 1)) };
+}
+
+function checkCitation(ref, p, errors) {
+	const { relPath, line } = splitRef(ref);
+	const abs = path.resolve(repoRoot, relPath);
+
+	// Refuse to follow a citation out of the tree that was scanned — an absolute
+	// path or a ../ climb points at something the scan never covered.
+	if (abs !== repoRoot && !abs.startsWith(repoRoot + path.sep)) {
+		errors.push(`${p}: ${relPath} resolves outside the scanned tree (${repoRoot})`);
+		return;
+	}
+
+	let stat;
+	try {
+		stat = fs.statSync(abs);
+	} catch (e) {
+		errors.push(`${p}: no such file in the scanned tree: ${relPath}`);
+		return;
+	}
+	if (!stat.isFile()) {
+		errors.push(`${p}: not a regular file: ${relPath}`);
+		return;
+	}
+
+	const read = linesOf(abs);
+	if (read.error) {
+		errors.push(`${p}: cannot read ${relPath}: ${read.error}`);
+		return;
+	}
+	if (line < 1 || line > read.lines.length) {
+		errors.push(`${p}: line ${line} is out of range — ${relPath} has ${read.lines.length} line(s)`);
+		return;
+	}
+	if (read.lines[line - 1].trim() === "") {
+		errors.push(`${p}: line ${line} of ${relPath} is blank — a citation must point at code`);
+	}
+}
+
 // --- Run ----------------------------------------------------------------------
 
 let errorCount = 0;
@@ -214,13 +338,21 @@ findings.forEach((f, i) => {
 		}
 	}
 
+	// Citation layer — only for refs that are well-formed enough to resolve;
+	// a malformed ref already failed above and would only error twice.
+	if (repoRoot && f && f.verdict === "true_positive") {
+		if (isFileLine(f.source_ref)) checkCitation(f.source_ref, `[${i}].source_ref`, errs);
+		if (isFileLine(f.sink_ref)) checkCitation(f.sink_ref, `[${i}].sink_ref`, errs);
+	}
+
 	for (const msg of errs) console.error("  ERROR:", msg);
 	errorCount += errs.length;
 });
 
 console.log();
 if (errorCount === 0) {
-	console.log(`PASS: ${findings.length} finding(s) valid`);
+	const scope = repoRoot ? "valid, citations resolved" : "valid (shape only — pass --repo to resolve citations)";
+	console.log(`PASS: ${findings.length} finding(s) ${scope}`);
 } else {
 	console.error(`FAIL: ${errorCount} error(s) across ${findings.length} finding(s)`);
 	process.exit(1);

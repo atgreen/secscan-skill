@@ -75,8 +75,11 @@ defaults to the current repo's diff vs. `main`.
   (s4), pre-filter (s5), and adversarial verify (s6).
 - `findings.schema.json` — JSON schema for the optional `findings.json` (s9),
   with `true_positive` and `false_positive` verdict branches.
-- `validate-findings.cjs` — zero-dependency Node validator that checks a
-  `findings.json` against the schema. Structural check only.
+- `validate-findings.cjs` — zero-dependency Node validator for a
+  `findings.json`. Checks schema conformance, and with `--repo <scanned-path>`
+  also resolves every `source_ref`/`sink_ref` against the scanned tree (file
+  present, line in range and non-blank) — a hallucinated citation fails the
+  build instead of reaching a human. Structural check only.
 - `remediate.md` — the **opt-in** fix flow (re-confirm → minimal root-cause
   patch → adversarial validation), loaded only when you ask to fix named
   findings. It's the one path that edits the target; a scan never triggers it.

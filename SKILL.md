@@ -342,9 +342,13 @@ record). A finding downgraded under gates.md rule 0 carries the quoted clause in
 the optional `policy_dispute` field — that is where `disputed-by-policy` lands
 in the JSON. `additionalProperties`
 is enforced, so no stray fields. Validate with
-`node <skill-dir>/validate-findings.cjs <path>/findings.json` — a structural
-check only (schema conformance, not correctness; the finding's truth was
-established in s6). This is the machine-readable form of the same triage
+`node <skill-dir>/validate-findings.cjs --repo <scanned-path> <path>/findings.json`.
+Schema conformance is checked always; `--repo` additionally resolves every
+`source_ref`/`sink_ref` against the tree you scanned — the file must exist in it
+and the line must be in range and non-blank. **Always pass `--repo`**: a
+citation that doesn't resolve was never read, and that is the one class of bad
+finding a machine can catch for free. It remains a structural check (a resolving
+line is not a correct finding; the finding's truth was established in s6). This is the machine-readable form of the same triage
 candidates — SARIF is still available on request.
 
 **Output persistence — default to chat, don't write files unprompted.** Emit
