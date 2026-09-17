@@ -118,6 +118,16 @@ signal high.
   exec), `wordpress` (WP/WooCommerce plugin/theme/core — nonces, capability
   checks, `$wpdb->prepare`, `esc_*`/`sanitize_*`, `wp_ajax_nopriv`/REST
   handlers). Full lens prompts are in `lenses.md` — read it now.
+- **Load the language hints for what you found.** `lang-hints.md` carries a
+  "where to look first" block per language (go, ruby, csharp, kotlin, swift,
+  elixir, solidity, cobol, jcl). Read **only the blocks for languages in this
+  repo** — it's a reference keyed by language, and reading it whole is exactly
+  the waste this skill exists to avoid. The blocks name constructs that commonly
+  carry a defect; they are a starting set, never a checklist, and never a
+  verdict — everything they surface still goes through the gates and its CWE
+  row. Languages already covered by a lens (C/C++/Rust by `memory-safety`, PHP
+  by `php`/`wordpress`) have no block; Java, Python and JavaScript/TypeScript
+  are covered at the sink level by `cwe-kb.md`'s taxonomy.
 - **Prior runs (opt-in coverage memory).** A single pass never finds everything.
   If a prior scan persisted results at `security-scan/findings.json` or a
   coverage matrix at `security-scan/coverage.json` (see s9), read them — but
@@ -603,7 +613,7 @@ places to start.
 ## Quick start
 "Scan <path> for vulnerabilities" → s1 on that path. If no path, ask or default
 to the current repo's diff vs main. Read `lenses.md`, `gates.md`, and `cwe-kb.md`
-before s4.
+before s4, plus the `lang-hints.md` blocks for the languages s1 found.
 
 If the user then asks to **fix** named findings ("fix #1 and #3", "fix the
 HIGHs"), read `remediate.md` and follow it. Remediation is opt-in and is the

@@ -85,6 +85,10 @@ defaults to the current repo's diff vs. `main`.
   ai-llm, web-protocol, client-side, php, wordpress), each gated on a surface
   actually present in the repo, and per-repo-kind threat-model baselines
   (web-api, web-app, mobile, native, iac, library).
+- `lang-hints.md` — per-language "where to look first" blocks (go, ruby,
+  csharp, kotlin, swift, elixir, solidity, cobol, jcl), loaded selectively by s1
+  for the languages actually present. A starting set for discovery, not a
+  checklist and not a verdict.
 - `cwe-kb.md` — per-CWE taint knowledge base (sources, sinks, sanitizers split
   into universal / CWE-class-specific / unproven-by-name, look-alike
   non-sanitizers, false-positive checks, and attacker bypass

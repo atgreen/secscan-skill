@@ -16,8 +16,10 @@ from vvaharness's S10/S11 remediation and validation stages), and the
 per-CWE taint knowledge base in `cwe-kb.md` (sources/sinks/sanitizers/
 non-sanitizers/fp-checks adapted from vvaharness's `generic.kb.yaml` and
 `CweKB.prompt_block`, and the per-CWE bypass hints from its
-`validator_hints.yaml`) — is adapted from, and in places reproduced
-verbatim from, vvaharness:
+`validator_hints.yaml`), and the per-language "where to look first"
+blocks in `lang-hints.md` (adapted and trimmed from its `LANG_HINTS` in
+`vvaharness/lang/hints.py`, for a subset of the languages it covers) —
+is adapted from, and in places reproduced verbatim from, vvaharness:
 
     Visa Vulnerability Agentic Harness (vvaharness)
     Copyright 2026 Visa, Inc.
