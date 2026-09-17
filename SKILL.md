@@ -102,8 +102,13 @@ signal high.
   dispatch sinks per language, and response-side (output) sinks — these are easy
   to miss with a naive grep.
 - Pick the **specialist lenses** that match the code (default set:
-  `crypto, logic-bug, access-control, batch-etl, iac`). Add the ones the code
-  calls for: `deserialization` (JVM/pickle/yaml/PHP `unserialize`+`phar://`),
+  `crypto, logic-bug, access-control, batch-etl, iac`, plus `sensitive-data` and
+  `log-injection` on any repo that has entry points at all — for a web or API
+  target that means always). **Gate the rest on surface, and gate before you
+  read, not after:** decide from the s1 inventory whether the surface exists, and
+  drop the lens entirely if it doesn't. A lens with no surface costs nothing;
+  running every lens on every slice is a real spend, not a free thoroughness win.
+  Add the ones the code calls for: `deserialization` (JVM/pickle/yaml/PHP `unserialize`+`phar://`),
   `memory-safety` (C/C++/Rust `unsafe`/cgo/JNI/kernel/parsers), `ai-llm`
   (RAG/agent/tool-calling/MCP/prompt-assembly), `web-protocol` (proxy/CDN/
   gateway/custom HTTP parser or any session/JWT/OAuth/SAML/reset flow),
