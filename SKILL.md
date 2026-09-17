@@ -294,7 +294,13 @@ reviewer. **Assume the finding is WRONG until you confirm it in the source.**
   *every* route into the sink and survives edge-case input.
 - **Use `cwe-kb.md` for the finding's CWE.** A **SANITIZER** on the confirmed
   path is grounds to refute — but only if it's the right control for the sink's
-  context and covers every route in. A **NON-SANITIZER** (manual escaping, a
+  context and covers every route in. Check its kind before you lean on it:
+  **UNIVERSAL** names hold against any sink; **CLASS-SPECIFIC** ones hold only
+  against their own CWE at the sink actually reached (a coercion upstream of a
+  shell call defends SQL, not the shell call); and **UNPROVEN BY NAME** names —
+  `validate`, `clean`, `sanitize` — are worth nothing until you open them and
+  see what they do. Refuting on a well-named function you didn't read is how a
+  real injection finding gets buried. A **NON-SANITIZER** (manual escaping, a
   regex blacklist, `basename` alone, a scheme-only allow-list, `startswith('/')`)
   is NOT a defense — do not refute on its basis. Before you refute *because* a
   defense exists, run that CWE's **BYPASS HINTS** against it (encoding tricks,
