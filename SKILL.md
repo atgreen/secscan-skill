@@ -175,15 +175,36 @@ budget on code that lies on a plausible source→sink path first — a file no e
 point can reach and no sink sits in is low-yield. But scoping-down is only safe
 when it *isn't* hiding most of the repo:
 - **Fail open if the pruning is suspiciously sparse.** If "reachable-only" would
-  drop more than ~half of the eligible files, don't trust your reachability call
-  — revert to reviewing everything in scope. A shallow in-session trace misses
-  edges; treat a sparse result as your own blind spot, not as clean code.
+  drop more than about a **third** of the eligible files, don't trust your
+  reachability call — revert to reviewing everything in scope. A shallow
+  in-session trace misses edges; treat a sparse result as your own blind spot,
+  not as clean code. The threshold is deliberately low: reachability pruning
+  reliably drives whole file classes to zero reviewers, and a file nobody reads
+  is indistinguishable in the report from a file that came back clean. When in
+  doubt, sweep it.
 - **Files in an unfamiliar language get no static seed — treat them as
   reachable**, not as skipped.
 - **List what you deprioritized.** Whatever you consciously left for last or out
   of this pass goes in the s9 report's coverage note (the "unreviewed / lower-
   priority" appendix). Silent truncation reads as "covered everything" when it
   didn't.
+
+**Coverage backstop — add back, don't prune.** After slicing, sweep what's left
+over. Anything that isn't recognizably source, IaC, or a language you slice by
+goes into the catch-all rather than being dropped: an unfamiliar extension is
+your gap, not the file's. The exception is a short list of classes that cannot
+carry an exploitable finding, and only these may be skipped outright:
+- vendored docs, examples, samples, fixtures, mocks, and snapshot directories
+- readme / license / changelog / notice-class files
+- lockfiles, minified bundles, source maps, generated `.d.ts` declarations
+- images, fonts, CSS, spreadsheets, CSV, logs, translation catalogs
+
+Be strict about that list. It exists so the coverage matrix isn't padded with
+`not-run` cells for PNGs — not as a place to file anything inconvenient. A
+config, template, script, or schema file is *not* on it, however boring it
+looks; IaC and CI definitions are prime findings. **Say how many files the
+backstop added back**, in the s9 coverage appendix. A big number means your
+slicing missed a subsystem, and that is worth knowing before the findings are.
 
 ### s4 — Deep-dive (discovery)
 For **each slice**, apply the deep-dive lens below. Trace data flow; do not
@@ -472,7 +493,9 @@ this scan *didn't* do, and it is what makes the next one worth running:
    across, cells `covered` / `thin` / `n/a` / `not-run`). Lead with the count of
    cells in each state, so a mostly-empty grid can't hide behind a long findings
    list.
-2. **Files and areas deprioritized or unreviewed** this pass (per s3).
+2. **Files and areas deprioritized or unreviewed** this pass (per s3), and the
+   **count the coverage backstop added back** — a large one means the slicing
+   missed a subsystem rather than that the sweep worked hard.
 3. **The wishlist** — the leads parked in s4/s6, each as `file:line` + what
    looked off + the lens that would settle it. Label it plainly as *unchased
    leads, not findings*: these have no traced path and no attacker, and
@@ -553,6 +576,7 @@ offer to persist two files under `security-scan/`:
       },
       "gapfill": ["db-layer × access-control", "auth × logic-bug"],
       "funnel": { "candidates": 31, "after_prefilter": 14, "verified": 6, "by_severity": { "high": 3, "medium": 2, "low": 1 } },
+      "backstop_added_back": 4,
       "leads": [
         { "ref": "parsers/xml.py:88", "note": "resolves entities on a parser built elsewhere; needs the construction site to rule out XXE", "lens": "deserialization" }
       ]
