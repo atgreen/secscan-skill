@@ -273,6 +273,10 @@ slice goes on the gapfill shortlist. Treat an empty slice as a prompt to check
 whether the review actually happened, not as a clean bill of health.
 
 ### s5 — Pre-filter (deterministic, free)
+**Keep a running tally** as you go — candidates in, survivors out — and the same
+at s6. It costs two numbers and it is the only way anyone can tell whether the
+gates are calibrated (see s9's funnel).
+
 Drop any finding that: is below ~0.5 confidence; lacks a real `source_ref` AND
 `sink_ref` you actually read; matches an exclusion group A–E; or matches an **FP
 CHECK** for its CWE in `cwe-kb.md` (e.g. CWE-89 taint reaches a bound parameter
@@ -387,7 +391,20 @@ Then continue severity-ranked (HIGH → LOW), each finding with: title,
 severity + CVSS vector, CWE, source_ref → sink_ref, exploit scenario,
 **reproducer** (the PoC/model from s6b, with what actually ran vs. what the user
 must run elsewhere), recommendation. Lead with a one-paragraph summary (repo
-kind, lenses run, scope covered, counts by severity). State explicitly:
+kind, lenses run, scope covered, counts by severity), followed by the **triage
+funnel** — s4 candidates → s5 survivors → s6 survivors, e.g. `31 candidates →
+14 after pre-filter → 6 verified (3 high, 2 medium, 1 low)`. Two numbers per
+stage, no extra work, and they are what makes the gates inspectable: a funnel
+that barely narrows means s5/s6 aren't doing their job, and one that collapses
+to near zero every run means they're over-tuned and eating real bugs. Neither is
+visible from a findings list alone. Persisted across runs (see below), the drift
+is the signal.
+
+**Do not turn this into a detection rate.** The funnel measures what this scan
+did to its own candidates, nothing more. secscan has no ground truth to compare
+against, so it never claims a false-negative rate, a percentage of bugs found,
+or any figure implying the scan is complete — a clean report means this pass
+found nothing, not that there is nothing. State explicitly:
 **triage candidates requiring human review**; note anything left out of scope
 (including out-of-scope-per-policy items from s1).
 
@@ -477,6 +494,7 @@ offer to persist two files under `security-scan/`:
         "db-layer":    { "access-control": "not-run", "crypto": "n/a", "logic-bug": "not-run" }
       },
       "gapfill": ["db-layer × access-control", "auth × logic-bug"],
+      "funnel": { "candidates": 31, "after_prefilter": 14, "verified": 6, "by_severity": { "high": 3, "medium": 2, "low": 1 } },
       "leads": [
         { "ref": "parsers/xml.py:88", "note": "resolves entities on a parser built elsewhere; needs the construction site to rule out XXE", "lens": "deserialization" }
       ]

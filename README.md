@@ -32,8 +32,12 @@ is gated, severity-calibrated, and adversarially verified before it's reported.
   source, config, or tests. The one exception is the opt-in remediation flow
   (`remediate.md`), which edits only when you name findings to fix and
   adversarially validates each patch.
-- **Honest output.** Zero findings is a valid result. Findings are triage
-  candidates requiring human review, never represented as confirmed vulns.
+- **Honest output.** Zero findings is a valid result — though a slice that
+  found nothing has to show it actually looked. Findings are triage candidates
+  requiring human review, never represented as confirmed vulns. Every report
+  carries its triage funnel (candidates → pre-filter → verified) so the gates
+  are inspectable; no scan claims a detection rate, because there's no ground
+  truth to claim one against.
 - **Threat model first.** Every finding must name *who* the attacker is and
   *which* trust boundary their input crosses before it gets a title. A
   dangerous-looking sink with no actor and no boundary is a tautology, and
