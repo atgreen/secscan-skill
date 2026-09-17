@@ -17,7 +17,7 @@ is gated, severity-calibrated, and adversarially verified before it's reported.
 | **s3 — Decompose** | Group code into focused review slices (by entry point, by specialist scope, plus a catch-all sweep); lay out the slice × lens coverage matrix the pass is accountable to. |
 | **s4 — Deep-dive** | Per slice, trace data flow (not pattern-match), apply specialist lenses, run every candidate through the gates, and park unchasable leads on a wishlist. |
 | **s5 — Pre-filter** | Drop low-confidence / uncited / out-of-scope findings, deterministically and for free. |
-| **s6 — Adversarial verify** | Assume each finding is **wrong** until confirmed in source; walk callers back to an external entry point; assign a CVSS 3.1 vector. |
+| **s6 — Adversarial verify** | Assume each finding is **wrong** until confirmed in source; walk callers back to an external entry point; assign a CVSS 3.1 vector. Optionally hand the refutation to a different model. |
 | **s7/s8 — Dedup & chain** | Merge by root cause — one patch site, all its manifestations kept; look for multi-hop exploit chains. |
 | **s9 — Report** | Severity-ranked Markdown (CWE, source→sink, exploit scenario, fix), marked as triage candidates, plus a coverage appendix naming the gaps. Optional schema-validated `findings.json` and a `coverage.json` matrix. |
 

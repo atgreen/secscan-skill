@@ -311,6 +311,17 @@ reviewer. **Assume the finding is WRONG until you confirm it in the source.**
   sink, no defense fully closes it, and impact is real. Assign a CVSS 3.1 base
   vector. Confidence 8–10 means you actively searched for the opposite verdict
   and couldn't support it.
+- **A change of hat is not a change of judgment.** s6 works because you argue
+  the opposite case, but you argue it with the same weights that produced the
+  finding — the same blind spots, the same confident misreading. Where it
+  matters, hand the verification to a **different model**: dispatch the finding
+  to a subagent with an explicit model override, give it the cited code and the
+  claim but *not* your reasoning, and ask it to refute. A second opinion from
+  different weights is worth more than several more runs of your own. This costs
+  real tokens and breaks the single-context discipline, so it stays opt-in — do
+  it when the user asks for thorough verification, or for a high-severity finding
+  you're about to put in front of someone. The default single-session pass is
+  still a full s6, not a degraded one.
 - **If you fan out verification** to multiple subagents (only when the user asks
   or a finding is high-stakes), merge conservatively — never average: an agent
   that couldn't evaluate abstains and never outweighs one that did; on a tie or
