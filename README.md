@@ -97,8 +97,9 @@ defaults to the current repo's diff vs. `main`.
   present, line in range and non-blank) — a hallucinated citation fails the
   build instead of reaching a human. Structural check only.
 - `remediate.md` — the **opt-in** fix flow (re-confirm → minimal root-cause
-  patch → adversarial validation), loaded only when you ask to fix named
-  findings. It's the one path that edits the target; a scan never triggers it.
+  patch → adversarial validation, including re-running the finding's reproducer
+  and its bypass variants, since a reproducer going quiet is not by itself proof
+  of a fix), loaded only when you ask to fix named findings. It's the one path that edits the target; a scan never triggers it.
 
 ## License
 

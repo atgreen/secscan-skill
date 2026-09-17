@@ -87,6 +87,28 @@ and score four gates:
   `cwe-kb.md` masquerading as the fix (manual escaping, a regex blacklist,
   `basename` alone) — that is not a real remediation.
 
+**Re-run the finding's s6b reproducer, if it had one — and read its silence
+correctly.** A reproducer that *still fires* against the patched tree settles
+`root_cause` on the spot: an objective signal needs no argument. A reproducer
+that has *gone quiet does not establish a fix*, because a swallowed exception,
+a changed error path, a renamed endpoint, or a fix that merely moves the sink
+all look exactly like success from the outside. Before silence counts for
+anything:
+- **Try same-subtype variants first.** Take the original payload and vary it
+  the way the CWE's **BYPASS HINTS** in `cwe-kb.md` suggest — re-encode it,
+  change the context, take the second-order route, swap the identifier
+  position. **Any variant that fires means the fix is not done**, and you now
+  have the follow-up exploit rather than a guess.
+- **Only if variation finds nothing** does silence become evidence, and even
+  then it is evidence for the gates below to weigh, never a verdict by itself.
+- **The conditions must match the original run.** A "fixed" result reached
+  under different credentials, a different auth state, a different entry point,
+  or a target that isn't running the patched code is not a result at all —
+  discard it and say so. Changing the test and passing it is not remediation.
+
+This is the mirror of s6b's positive-only rule, pointed the other way: there, a
+silent reproducer could not condemn the code; here, it cannot absolve it.
+
 Each gate cites `file:line` from the patched tree. If a gate genuinely can't be
 evaluated (can't establish the path on the current tree, can't build to observe
 behavior), mark it **unevaluated** — never guess it "pass". Collapse to a verdict:
@@ -95,9 +117,10 @@ behavior), mark it **unevaluated** — never guess it "pass". Collapse to a verd
   remain; state the residual risk.
 - **Not Fixed** — root cause not severed, or the fix introduced a new issue.
 - **UNVERIFIABLE** — you couldn't evaluate enough of the gates to trust any
-  verdict (in particular, `no_new_vulnerabilities` was left unevaluated). Don't
-  average an unknown into "Partially Fixed" — say it's unverifiable and hand the
-  user the choice below. Fail closed, not fail quiet.
+  verdict (in particular, `no_new_vulnerabilities` was left unevaluated), or the
+  only evidence for the fix is a reproducer that went quiet without variants
+  having been tried. Don't average an unknown into "Partially Fixed" — say it's
+  unverifiable and hand the user the choice below. Fail closed, not fail quiet.
 
 **`no_new_vulnerabilities` is a non-waivable critical gate.** A high score on the
 other three cannot outweigh it: if the fix introduces a new issue (gate fails),
