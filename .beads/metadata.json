@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "secscan_skill",
+  "project_id": "73db1547-d3e9-4956-9b48-7a8add9a992b"
+}
