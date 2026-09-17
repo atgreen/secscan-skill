@@ -124,7 +124,10 @@ signal high.
   and at that run's own `gapfill` shortlist. Cells marked `covered` are the
   *last* place to spend budget, not a place to skip: re-derive the slice list
   from the code in front of you, then reorder it with the matrix — never let the
-  matrix decide what exists. It must NEVER suppress: a `false_positive` entry
+  matrix decide what exists. Its `leads` are a prior run's parked questions:
+  cheap, specific starting points, and re-confirming one is how a lead becomes a
+  finding — though an unchased lead is no more evidence of a bug than a
+  `covered` cell is evidence of safety. It must NEVER suppress: a `false_positive` entry
   does not remove a class from review, and a "confirmed"/covered claim does not
   let you skip a subsystem you haven't independently read. If its coverage lines
   up suspiciously well with the vulnerable-looking code, treat that as a red flag
@@ -231,6 +234,29 @@ description (input→bug data flow), exploit_scenario, preconditions,
 recommendation, code_snippet (redact any secret it contains — see s9),
 **source_ref** (file:line where input enters) and **sink_ref** (file:line where
 used unsafely), confidence (0–1).
+
+**Park what you can't chase — keep a wishlist.** A deep-dive constantly turns up
+things it has no budget to follow: a helper that sanitizes "mostly", a file in a
+language you don't read, a call into a dependency you can't see, a path that
+would need dynamic analysis to settle. Right now every one of those evaporates
+when the slice ends. Write them down instead — one line each, costing a sentence
+rather than a trace:
+
+> `parsers/xml.py:88` — resolves entities on a parser built elsewhere; needs the
+> construction site to rule out XXE. → deserialization
+
+Rules, because a wishlist that drifts becomes a false-findings list:
+- **A lead is not a finding.** It has no attacker, no boundary, no traced path —
+  that's exactly why it's a lead. It never appears in the findings list, never
+  gets a severity or a CWE, and is never described to the user as something the
+  scan found. If you can trace it, it stops being a lead and goes through the
+  gates like anything else.
+- **Cite or drop.** A lead without a `file:line` is a feeling.
+- **Record it when you see it**, mid-slice. The whole value is capturing what
+  you'd otherwise lose at the slice boundary.
+- **s6 feeds it too.** A candidate killed because you couldn't find an entry
+  point *from here* is a false positive in this run's records and a lead for the
+  next one — say which reachability question would settle it.
 
 **Close out each slice by filling its row** of the s3 matrix — one cell state per
 lens, set from what you actually did, not from what you intended. Do it as you
@@ -363,7 +389,12 @@ this scan *didn't* do, and it is what makes the next one worth running:
    cells in each state, so a mostly-empty grid can't hide behind a long findings
    list.
 2. **Files and areas deprioritized or unreviewed** this pass (per s3).
-3. **The gapfill shortlist** — the handful of `not-run` and `thin` cells that
+3. **The wishlist** — the leads parked in s4/s6, each as `file:line` + what
+   looked off + the lens that would settle it. Label it plainly as *unchased
+   leads, not findings*: these have no traced path and no attacker, and
+   presenting them as anything else would inflate the scan's results with
+   exactly the vagueness the gates exist to keep out.
+4. **The gapfill shortlist** — the handful of `not-run` and `thin` cells that
    look highest-yield, named as concrete next targets ("`auth/session.go` ×
    web-protocol"). This is the whole point of keeping the grid: a scan that ends
    by naming its own gaps is one a later run can pick up, instead of starting
@@ -436,7 +467,10 @@ offer to persist two files under `security-scan/`:
         "auth":        { "access-control": "covered", "crypto": "thin", "logic-bug": "not-run" },
         "db-layer":    { "access-control": "not-run", "crypto": "n/a", "logic-bug": "not-run" }
       },
-      "gapfill": ["db-layer × access-control", "auth × logic-bug"]
+      "gapfill": ["db-layer × access-control", "auth × logic-bug"],
+      "leads": [
+        { "ref": "parsers/xml.py:88", "note": "resolves entities on a parser built elsewhere; needs the construction site to rule out XXE", "lens": "deserialization" }
+      ]
     }
   ]
 }

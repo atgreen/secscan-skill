@@ -15,7 +15,7 @@ is gated, severity-calibrated, and adversarially verified before it's reported.
 | **s1 — Survey & recon** | Read the project's own `SECURITY.md` (authoritative), inventory languages/frameworks, classify repo kind, map entry points → sinks, pick specialist lenses. |
 | **s2 — Threat model** | Instantiate the OWASP/CWE baseline for the repo kind + a STRIDE pass; anchor to the project's published trust boundaries. |
 | **s3 — Decompose** | Group code into focused review slices (by entry point, by specialist scope, plus a catch-all sweep); lay out the slice × lens coverage matrix the pass is accountable to. |
-| **s4 — Deep-dive** | Per slice, trace data flow (not pattern-match), apply specialist lenses, and run every candidate through the gates. |
+| **s4 — Deep-dive** | Per slice, trace data flow (not pattern-match), apply specialist lenses, run every candidate through the gates, and park unchasable leads on a wishlist. |
 | **s5 — Pre-filter** | Drop low-confidence / uncited / out-of-scope findings, deterministically and for free. |
 | **s6 — Adversarial verify** | Assume each finding is **wrong** until confirmed in source; walk callers back to an external entry point; assign a CVSS 3.1 vector. |
 | **s7/s8 — Dedup & chain** | Merge duplicates; look for multi-hop exploit chains. |
