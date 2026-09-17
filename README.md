@@ -14,7 +14,7 @@ is gated, severity-calibrated, and adversarially verified before it's reported.
 |-------|--------------|
 | **s1 — Survey & recon** | Read the project's own `SECURITY.md` (authoritative), inventory languages/frameworks, classify repo kind, map entry points → sinks, pick specialist lenses. |
 | **s2 — Threat model** | Instantiate the OWASP/CWE baseline for the repo kind + a STRIDE pass; anchor to the project's published trust boundaries. |
-| **s3 — Decompose** | Group code into focused review slices (by entry point, by specialist scope, plus a catch-all sweep); lay out the slice × lens coverage matrix the pass is accountable to. |
+| **s3 — Decompose** | Group code into focused review slices (by entry point, by specialist scope, plus a catch-all sweep that adds back anything unrecognized); lay out the slice × lens coverage matrix the pass is accountable to. |
 | **s4 — Deep-dive** | Per slice, trace data flow (not pattern-match), apply specialist lenses, run every candidate through the gates, and park unchasable leads on a wishlist. |
 | **s5 — Pre-filter** | Drop low-confidence / uncited / out-of-scope findings, deterministically and for free. |
 | **s6 — Adversarial verify** | Assume each finding is **wrong** until confirmed in source; walk callers back to an external entry point; assign a CVSS 3.1 vector. Optionally hand the refutation to a different model. |
@@ -33,7 +33,9 @@ is gated, severity-calibrated, and adversarially verified before it's reported.
   (`remediate.md`), which edits only when you name findings to fix and
   adversarially validates each patch.
 - **Honest output.** Zero findings is a valid result — though a slice that
-  found nothing has to show it actually looked. Findings are triage candidates
+  found nothing has to show it actually looked. Reproducers are a positive-only
+  signal: one that fires confirms a finding, one that stays silent proves
+  nothing and never quietly shaves a severity. Findings are triage candidates
   requiring human review, never represented as confirmed vulns. Every report
   carries its triage funnel (candidates → pre-filter → verified) so the gates
   are inspectable; no scan claims a detection rate, because there's no ground
@@ -79,11 +81,17 @@ defaults to the current repo's diff vs. `main`.
   attacker and the trust boundary crossed), severity calibration, and
   exhaustiveness (loaded on demand at s4–s6).
 - `lenses.md` — the specialist lenses (crypto, logic-bug, access-control,
-  deserialization, batch-etl, iac, memory-safety, ai-llm, web-protocol,
-  client-side, php, wordpress) and per-repo-kind threat-model baselines
+  sensitive-data, log-injection, deserialization, batch-etl, iac, memory-safety,
+  ai-llm, web-protocol, client-side, php, wordpress), each gated on a surface
+  actually present in the repo, and per-repo-kind threat-model baselines
   (web-api, web-app, mobile, native, iac, library).
-- `cwe-kb.md` — per-CWE taint knowledge base (sources, sinks, real sanitizers
-  vs. look-alike non-sanitizers, false-positive checks, and attacker bypass
+- `lang-hints.md` — per-language "where to look first" blocks (go, ruby,
+  csharp, kotlin, swift, elixir, solidity, cobol, jcl), loaded selectively by s1
+  for the languages actually present. A starting set for discovery, not a
+  checklist and not a verdict.
+- `cwe-kb.md` — per-CWE taint knowledge base (sources, sinks, sanitizers split
+  into universal / CWE-class-specific / unproven-by-name, look-alike
+  non-sanitizers, false-positive checks, and attacker bypass
   hints) plus a source/sink recognition taxonomy (sanitizer names, reflection
   sinks, framework request-binding sources). Loaded before s4; drives discovery
   (s4), pre-filter (s5), and adversarial verify (s6).
@@ -95,8 +103,9 @@ defaults to the current repo's diff vs. `main`.
   present, line in range and non-blank) — a hallucinated citation fails the
   build instead of reaching a human. Structural check only.
 - `remediate.md` — the **opt-in** fix flow (re-confirm → minimal root-cause
-  patch → adversarial validation), loaded only when you ask to fix named
-  findings. It's the one path that edits the target; a scan never triggers it.
+  patch → adversarial validation, including re-running the finding's reproducer
+  and its bypass variants, since a reproducer going quiet is not by itself proof
+  of a fix), loaded only when you ask to fix named findings. It's the one path that edits the target; a scan never triggers it.
 
 ## License
 

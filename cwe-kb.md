@@ -183,13 +183,36 @@ For the CWE(s) a finding touches, splice its row into your reasoning:
 
 ### Recognized sanitizer names
 A call from this set on the confirmed path is a *candidate* sanitizer — grep for
-it, but confirm it's the *right* control for the sink's context (an HTML encoder
-does not defend SQL) and that it covers every route in:
-`escape`, `quote`, `sanitize`, `clean`, `encode`, `validate`, `strip_tags`,
-`html_escape`, `xml_escape`, `quote_plus`, `urlencode`, `bleach_clean`,
-`prepared_statement`, `parameterized`, `to_int`, `int`, `float`, `bool`.
-(Type coercions like `int`/`float`/`bool` only sanitize when the sink actually
-needs that type — a coerced-to-`int` id defends SQLi but not an authz gap.)
+it, then confirm it covers every route in **and that it is the right control for
+the CWE of the sink the path actually arrives at**. The set splits three ways,
+and the split is the whole point: whether a name counts as a defense can only be
+decided once you know which sink it's defending.
+
+**UNIVERSAL — safe regardless of what consumes the value.** These exist to make
+a string safe to use, so a hit anywhere on the path neutralizes taint for any
+sink class:
+`escape`, `quote`, `strip_tags`, `html_escape`, `xml_escape`, `quote_plus`,
+`urlencode`, `bleach_clean`, `prepared_statement`, `parameterized`.
+
+**CLASS-SPECIFIC — only neutralizes its own CWE, and only at the sink it
+reaches.** Decide these at *sink arrival*, never per hop: the same tainted string
+can pass a coercion and still reach a different sink unharmed.
+| Name | Neutralizes | Does nothing for |
+|---|---|---|
+| `int`, `float`, `bool`, `to_int` | CWE-89 / CWE-90 (SQL, LDAP) | command injection, path traversal, authz gaps built from the same value |
+| `encode`, `html_escape` | CWE-79 (server-emitted XSS) | SQL, shell, header, or template contexts |
+
+A numeric coercion stops a SQL payload built from that value and does **nothing**
+for a command-injection payload built from the *same* string reaching a different
+sink. A coerced-to-`int` id defends SQLi but not an authz gap.
+
+**UNPROVEN BY NAME — never refute on these alone.** `validate`, `clean`,
+`sanitize`, and anything else whose name merely asserts safety. `validate_input(x)`
+is not evidence that any particular sink class was neutralized; it is evidence
+that somebody named a function well. Open it and find out what it actually does —
+if you can't, it is a NON-SANITIZER for this path. Treating this family as
+universal is a known way to lose real command- and SQL-injection findings behind
+an aptly-named but unproven function.
 
 ### Reflection / dynamic-dispatch sinks (per language)
 Attacker-influenced names reaching these enable RCE/type-confusion — trace them:

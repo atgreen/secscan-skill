@@ -92,7 +92,12 @@ dressed up as a vulnerability.
 3. **UNMITIGATED** — No validation, encoding, allow-list, or framework control
    between source and sink already neutralizes it. Check against the finding's
    CWE row in `cwe-kb.md`: a listed **SANITIZER** on the path (correct for the
-   sink's context, covering every route in) means drop it; a **NON-SANITIZER**
+   sink's context, covering every route in) means drop it — but check which kind
+   it is first. A **UNIVERSAL** sanitizer neutralizes any sink class. A
+   **CLASS-SPECIFIC** one only neutralizes its own CWE *at the sink the path
+   actually reaches*, so an `int()` upstream of a shell call defends nothing. A
+   name from the **UNPROVEN BY NAME** family (`validate`, `clean`, `sanitize`) is
+   not a defense until you have read what it does. A **NON-SANITIZER**
    (manual escaping, regex blacklist, `basename` alone, scheme-only allow-list,
    `startswith('/')`, client-side-only checks) does NOT neutralize it — keep the
    finding. When a real defense is present, confirm the CWE's **BYPASS HINTS**

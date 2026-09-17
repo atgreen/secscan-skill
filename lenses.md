@@ -111,6 +111,46 @@ issue — do not label it IDOR/BOLA.
 - Destructive bulk ops: deleteAll/truncate/"DELETE FROM t"/bulk UPDATE with no
   WHERE/owner/tenant scope reachable from a request — first-class high-impact.
 
+### sensitive-data
+Reviewing what the program *reveals*. The bug is disclosure, so trace data
+outward — from a secret or personal record to anywhere a lower-privileged party
+can observe it. Hunt on emission, not just on storage.
+- Error and exception handling that returns the raw exception, stack trace, SQL
+  text, or file path to the caller — debug handlers left reachable in prod, a
+  `catch` that serializes the exception into the response body.
+- Responses that over-return: a serializer emitting the whole record (password
+  hash, token, internal id, other tenants' fields) because nobody picked the
+  fields, or an admin-shaped DTO reused on a public endpoint.
+- PII or credentials written to logs, metrics, traces, crash reports, or
+  analytics events — request bodies logged wholesale, `Authorization` headers in
+  debug output, tokens in URLs (which land in access logs and `Referer`).
+- Secrets at rest in plaintext: credentials in config committed to the repo,
+  unencrypted storage of tokens/keys, backups or exports written world-readable.
+- Differential responses that leak existence: distinct messages or timings for
+  "no such user" versus "wrong password", enumerable sequential ids.
+- Caching or CDN headers letting a per-user response be stored and served to
+  someone else (`Cache-Control: public` on an authenticated route).
+
+### log-injection
+Reviewing the log as both a sink and a control. Two directions, and the second is
+the one that gets skipped.
+- **Data going in:** attacker-controlled strings reaching a log call without
+  newline/control-character neutralization — forged log lines, split records,
+  injected fake entries that frame another principal. Worse where logs are
+  structured: unescaped quotes or braces breaking the JSON/logfmt record so a
+  downstream parser reads attacker-supplied fields as real ones.
+- Terminal escape sequences in log output rendered by an operator's console, and
+  formula-injection payloads (`=`, `+`, `-`, `@`) in fields later exported to
+  CSV and opened in a spreadsheet.
+- Format-string sinks: user input passed as the *format* argument rather than an
+  argument to it (`logger.info(user_input)`), which is an injection and, in some
+  runtimes, a read primitive.
+- **Logging that's missing:** authentication failures, authorization denials,
+  privilege changes, password/MFA resets, and admin actions that produce no
+  record at all. An attack nobody can reconstruct afterwards is a real finding —
+  report it where the security-relevant branch exists but logs nothing, not as a
+  blanket "add more logging" recommendation.
+
 ### deserialization
 Unsafe-deserialization expert. Hunt deserialization of attacker-influenced bytes
 through libraries that invoke code during object reconstruction (dominant JVM

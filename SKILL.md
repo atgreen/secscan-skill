@@ -102,8 +102,13 @@ signal high.
   dispatch sinks per language, and response-side (output) sinks — these are easy
   to miss with a naive grep.
 - Pick the **specialist lenses** that match the code (default set:
-  `crypto, logic-bug, access-control, batch-etl, iac`). Add the ones the code
-  calls for: `deserialization` (JVM/pickle/yaml/PHP `unserialize`+`phar://`),
+  `crypto, logic-bug, access-control, batch-etl, iac`, plus `sensitive-data` and
+  `log-injection` on any repo that has entry points at all — for a web or API
+  target that means always). **Gate the rest on surface, and gate before you
+  read, not after:** decide from the s1 inventory whether the surface exists, and
+  drop the lens entirely if it doesn't. A lens with no surface costs nothing;
+  running every lens on every slice is a real spend, not a free thoroughness win.
+  Add the ones the code calls for: `deserialization` (JVM/pickle/yaml/PHP `unserialize`+`phar://`),
   `memory-safety` (C/C++/Rust `unsafe`/cgo/JNI/kernel/parsers), `ai-llm`
   (RAG/agent/tool-calling/MCP/prompt-assembly), `web-protocol` (proxy/CDN/
   gateway/custom HTTP parser or any session/JWT/OAuth/SAML/reset flow),
@@ -113,6 +118,16 @@ signal high.
   exec), `wordpress` (WP/WooCommerce plugin/theme/core — nonces, capability
   checks, `$wpdb->prepare`, `esc_*`/`sanitize_*`, `wp_ajax_nopriv`/REST
   handlers). Full lens prompts are in `lenses.md` — read it now.
+- **Load the language hints for what you found.** `lang-hints.md` carries a
+  "where to look first" block per language (go, ruby, csharp, kotlin, swift,
+  elixir, solidity, cobol, jcl). Read **only the blocks for languages in this
+  repo** — it's a reference keyed by language, and reading it whole is exactly
+  the waste this skill exists to avoid. The blocks name constructs that commonly
+  carry a defect; they are a starting set, never a checklist, and never a
+  verdict — everything they surface still goes through the gates and its CWE
+  row. Languages already covered by a lens (C/C++/Rust by `memory-safety`, PHP
+  by `php`/`wordpress`) have no block; Java, Python and JavaScript/TypeScript
+  are covered at the sink level by `cwe-kb.md`'s taxonomy.
 - **Prior runs (opt-in coverage memory).** A single pass never finds everything.
   If a prior scan persisted results at `security-scan/findings.json` or a
   coverage matrix at `security-scan/coverage.json` (see s9), read them — but
@@ -175,15 +190,36 @@ budget on code that lies on a plausible source→sink path first — a file no e
 point can reach and no sink sits in is low-yield. But scoping-down is only safe
 when it *isn't* hiding most of the repo:
 - **Fail open if the pruning is suspiciously sparse.** If "reachable-only" would
-  drop more than ~half of the eligible files, don't trust your reachability call
-  — revert to reviewing everything in scope. A shallow in-session trace misses
-  edges; treat a sparse result as your own blind spot, not as clean code.
+  drop more than about a **third** of the eligible files, don't trust your
+  reachability call — revert to reviewing everything in scope. A shallow
+  in-session trace misses edges; treat a sparse result as your own blind spot,
+  not as clean code. The threshold is deliberately low: reachability pruning
+  reliably drives whole file classes to zero reviewers, and a file nobody reads
+  is indistinguishable in the report from a file that came back clean. When in
+  doubt, sweep it.
 - **Files in an unfamiliar language get no static seed — treat them as
   reachable**, not as skipped.
 - **List what you deprioritized.** Whatever you consciously left for last or out
   of this pass goes in the s9 report's coverage note (the "unreviewed / lower-
   priority" appendix). Silent truncation reads as "covered everything" when it
   didn't.
+
+**Coverage backstop — add back, don't prune.** After slicing, sweep what's left
+over. Anything that isn't recognizably source, IaC, or a language you slice by
+goes into the catch-all rather than being dropped: an unfamiliar extension is
+your gap, not the file's. The exception is a short list of classes that cannot
+carry an exploitable finding, and only these may be skipped outright:
+- vendored docs, examples, samples, fixtures, mocks, and snapshot directories
+- readme / license / changelog / notice-class files
+- lockfiles, minified bundles, source maps, generated `.d.ts` declarations
+- images, fonts, CSS, spreadsheets, CSV, logs, translation catalogs
+
+Be strict about that list. It exists so the coverage matrix isn't padded with
+`not-run` cells for PNGs — not as a place to file anything inconvenient. A
+config, template, script, or schema file is *not* on it, however boring it
+looks; IaC and CI definitions are prime findings. **Say how many files the
+backstop added back**, in the s9 coverage appendix. A big number means your
+slicing missed a subsystem, and that is worth knowing before the findings are.
 
 ### s4 — Deep-dive (discovery)
 For **each slice**, apply the deep-dive lens below. Trace data flow; do not
@@ -294,7 +330,13 @@ reviewer. **Assume the finding is WRONG until you confirm it in the source.**
   *every* route into the sink and survives edge-case input.
 - **Use `cwe-kb.md` for the finding's CWE.** A **SANITIZER** on the confirmed
   path is grounds to refute — but only if it's the right control for the sink's
-  context and covers every route in. A **NON-SANITIZER** (manual escaping, a
+  context and covers every route in. Check its kind before you lean on it:
+  **UNIVERSAL** names hold against any sink; **CLASS-SPECIFIC** ones hold only
+  against their own CWE at the sink actually reached (a coercion upstream of a
+  shell call defends SQL, not the shell call); and **UNPROVEN BY NAME** names —
+  `validate`, `clean`, `sanitize` — are worth nothing until you open them and
+  see what they do. Refuting on a well-named function you didn't read is how a
+  real injection finding gets buried. A **NON-SANITIZER** (manual escaping, a
   regex blacklist, `basename` alone, a scheme-only allow-list, `startswith('/')`)
   is NOT a defense — do not refute on its basis. Before you refute *because* a
   defense exists, run that CWE's **BYPASS HINTS** against it (encoding tricks,
@@ -357,9 +399,23 @@ candidate, and stop once the bug is demonstrated.
   local program that demonstrates the defect deterministically. Label it clearly
   as a model, not a live exploit.
 - **Be honest about what ran.** State which reproducers you actually executed
-  and their output, versus source-only ones the user must run elsewhere. A
-  reproducer that fails to trigger is a strong signal to downgrade or drop the
-  finding — fold that back into the verdict.
+  and their output, versus source-only ones the user must run elsewhere. Never
+  describe a check you didn't perform as though you had.
+- **A reproducer is a positive-only signal.** One that fires confirms the
+  finding and raises its confidence. One that *doesn't* fire proves nothing and
+  **never downgrades or drops a finding on its own** — record it as "not
+  reproduced here", with the reason, and leave the s6 verdict and severity
+  exactly as s6 set them. A silent reproducer is indistinguishable from a
+  missing dependency, the wrong entry point, a swallowed error, or a model you
+  transcribed slightly wrong — and since execution safety forbids running the
+  target's own build or test harness, most of our reproducers are hand-written
+  approximations whose silence says more about them than about the code. The s6
+  static verdict is the authority; s6b can only add evidence to it.
+- **If a reproducer's failure genuinely changes your mind**, that's a finding
+  about the *code*, not about the reproducer: go back into s6, name the defense
+  or missing path you now see in the source, and refute it there on the
+  evidence. What you may not do is let an unexplained non-result quietly shave a
+  severity.
 - **Landing tests:** if the project wants regression coverage, write the
   reproducer in the repo's own test style (valid inputs, asserts on correct
   behavior) so it passes once fixed and is safe to land — and check the bug's
@@ -452,7 +508,9 @@ this scan *didn't* do, and it is what makes the next one worth running:
    across, cells `covered` / `thin` / `n/a` / `not-run`). Lead with the count of
    cells in each state, so a mostly-empty grid can't hide behind a long findings
    list.
-2. **Files and areas deprioritized or unreviewed** this pass (per s3).
+2. **Files and areas deprioritized or unreviewed** this pass (per s3), and the
+   **count the coverage backstop added back** — a large one means the slicing
+   missed a subsystem rather than that the sweep worked hard.
 3. **The wishlist** — the leads parked in s4/s6, each as `file:line` + what
    looked off + the lens that would settle it. Label it plainly as *unchased
    leads, not findings*: these have no traced path and no attacker, and
@@ -533,6 +591,7 @@ offer to persist two files under `security-scan/`:
       },
       "gapfill": ["db-layer × access-control", "auth × logic-bug"],
       "funnel": { "candidates": 31, "after_prefilter": 14, "verified": 6, "by_severity": { "high": 3, "medium": 2, "low": 1 } },
+      "backstop_added_back": 4,
       "leads": [
         { "ref": "parsers/xml.py:88", "note": "resolves entities on a parser built elsewhere; needs the construction site to rule out XXE", "lens": "deserialization" }
       ]
@@ -554,7 +613,7 @@ places to start.
 ## Quick start
 "Scan <path> for vulnerabilities" → s1 on that path. If no path, ask or default
 to the current repo's diff vs main. Read `lenses.md`, `gates.md`, and `cwe-kb.md`
-before s4.
+before s4, plus the `lang-hints.md` blocks for the languages s1 found.
 
 If the user then asks to **fix** named findings ("fix #1 and #3", "fix the
 HIGHs"), read `remediate.md` and follow it. Remediation is opt-in and is the
