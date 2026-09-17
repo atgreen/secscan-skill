@@ -356,10 +356,37 @@ candidate, and stop once the bug is demonstrated.
   Respect any disclosure process the security policy (s1) defines before
   publishing a test that reveals an unfixed in-scope bug.
 
-### s7 — Dedup & s8 — Chain
-Merge duplicate/overlapping findings. Then look for **exploit chains**: can two
-medium findings compose into a high (e.g. IDOR + missing authz → account
-takeover)? Rank by severity.
+### s7 — Dedup
+**Duplicates are defined by root cause, not by location.** Two findings are one
+finding when **one patch at one place closes both** — which is the question a
+maintainer is actually asking. Matching on `file:line`, or on titles that look
+alike, gets this wrong in both directions: it splits one unsanitized helper
+called from nine routes into nine bugs, and it merges two genuinely different
+flaws that happen to sit in the same file.
+
+Group cheaply first, then compare:
+1. **Deterministic pre-grouping** — bucket candidates by shared `sink_ref`,
+   shared vulnerable helper on the traced path, the same missing control (one
+   route table with no authz check), or the same fix site. This is free and
+   narrows the field to a handful of small buckets.
+2. **Compare semantically inside a bucket only** — same root cause, or two
+   defects that merely co-occur? Never compare across the whole finding list.
+
+When you merge, keep every manifestation: one finding, one root cause, and a
+list of **all** the source→sink pairs it shows up at. This is the part that
+matters — a merged finding that quietly drops eight of its nine call sites gets
+patched at the one site that was named, and the other eight ship. Take the
+**highest** severity across the manifestations, never the average: the worst
+reachable path is the one an attacker takes.
+
+Do **not** merge across different root causes (two bugs in one file are two
+findings), or across different trust boundaries even under the same CWE — an
+unauthenticated path and an authenticated one are different findings with
+different severities, and folding them together hides the worse one.
+
+### s8 — Chain
+Look for **exploit chains**: can two medium findings compose into a high (e.g.
+IDOR + missing authz → account takeover)? Rank by severity.
 
 ### s9 — Report
 Before emitting the report, **collect scan metadata** from the target directory:
